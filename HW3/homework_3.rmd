@@ -20,7 +20,7 @@ library(inspectdf)
 ## Load Data
 
 ```{r}
-loans <- readr::read_csv('C:/Users/chris/OneDrive/Master Of Data Science - CUNY/last_semester/machine_learning/homework_3/Loan_approval.csv')
+loans <- readr::read_csv('https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/HW3/Loan_approval.csv')
 ```
 ## Exploratory Data Analysis
 
