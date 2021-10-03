@@ -11,15 +11,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Homework 3
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 library(tidyverse)
 library(inspectdf)
+library(psych)
 ```
 
 
 ## Load Data
 
-```{r}
+```{r,message=FALSE, warning=FALSE}
 loans <- readr::read_csv('https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/HW3/Loan_approval.csv')
 ```
 ## Exploratory Data Analysis
@@ -30,6 +31,53 @@ To begin our exploratory data analysis, we'll begin by taking a high level look 
 glimpse(loans)
 ```
 From this view we can see that this dataset has 614 rows and 13 columns. There is a mix of both numeric and categorical data, although it appears that at least one numeric column should actually be categorical. 
+
+
+## Summary Statistics
+
+Continuous and categorical variables were summarized separately for the sake of clarity.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+train.num <- loans[, c('ApplicantIncome', 'CoapplicantIncome', 'LoanAmount','Loan_Amount_Term')]
+train.cat <- loans[, c('Gender', 'Married', 'Dependents', 'Education', 'Self_Employed',
+                           'Credit_History', 'Property_Area', 'Loan_Status')]
+train.cat$Gender <- as.factor(train.cat$Gender)
+train.cat$Married <- as.factor(train.cat$Married)
+train.cat$Dependents <- as.factor(train.cat$Dependents)
+train.cat$Education <- as.factor(train.cat$Education)
+train.cat$Self_Employed <- as.factor(train.cat$Self_Employed)
+train.cat$Credit_History <- as.factor(train.cat$Credit_History)
+train.cat$Property_Area <- as.factor(train.cat$Property_Area)
+train.cat$Loan_Status <- as.factor(train.cat$Loan_Status)
+
+summary.stat.num <- describe(train.num)[,c(2,8,3,5,9,4)]
+
+summary.stat.cat <- describe(train.cat)[,c(2,8,3,5,9,4)]
+
+summary.num <- summary(train.num)
+
+summary.cat1 <- summary(train.cat[, c( 'Dependents', 'Property_Area')])
+summary.cat2 <- summary(train.cat[, c('Gender', 'Married', 'Education', 'Self_Employed',
+                           'Credit_History',  'Loan_Status')])
+```
+
+
+```{r t2, echo=FALSE}
+knitr::kable(summary.stat.num)
+```
+
+`Dependents` and `Property_Area` each comprise multiple categories.  On the other hand, `Gender`, `Married`, `Education`, `Self_Employed`, `Credit_History`, `Loan_Status` are all binaries.
+
+```{r t3, echo=FALSE}
+knitr::kable(summary.cat1, caption="Summary statistics for Categorical Variables")
+```
+
+```{r t4, echo=FALSE}
+knitr::kable(summary.cat2, caption="Summary statistics for Binary Categorical Variables")
+```
+
+
+
 
 ```{r}
 inspectdf::inspect_types(loans) %>%
@@ -116,4 +164,42 @@ Some very interesting points about the demographic we are looking at come as we 
 ```
 
 
+## Summary Statistics Graphs
+
+The shapes of the distributions of the continuous variables are similar for both target values for all
+predictors. There does not seem to be a significant difference between those who get loan approval and those who do
+not for any of the predictors.
+
+
+```{r , fig.cap="Numeric Data Distributions as a Function of Loan_Status", echo=FALSE,warning=FALSE, fig.height=6, fig.width=8}
+train.num.graph <- loans[, c('Loan_Status', 'ApplicantIncome', 'CoapplicantIncome', 'LoanAmount','Loan_Amount_Term')]
+
+hist.num <- train.num.graph %>%
+    gather(-Loan_Status, key = "var", value = "val") %>%
+    ggplot(aes(x = val, fill=factor(Loan_Status))) +
+    geom_histogram(position="dodge", bins=10, alpha=0.5) +
+    facet_wrap(~ var, scales = "free") +
+    scale_fill_manual("Loan_Status",values = c("#58BFFF", "#3300FF")) +
+    xlab("") +
+    ylab("") +
+    theme(panel.background = element_blank(), legend.position="top")
+
+hist.num
+```
+
+Examining the dispersion of approval status between variables, it looks like likelihoods are higher for applicants who have credit history and who are maried and live in Semiurban area; as well as for those with graduate degree.
+
+```{r , fig.cap="Categorical Data Distributions as a Function of Loan_Status", echo=FALSE,warning=FALSE, fig.height=6, fig.width=8}
+bar.cat <- na.omit(train.cat) %>%
+    gather(-Loan_Status, key = "var", value = "val") %>%
+    ggplot(aes(x = val, fill=factor(Loan_Status))) +
+    geom_bar(position="dodge", alpha=0.5) +
+    facet_wrap(~ var, scales = "free") +
+    scale_fill_manual("Loan_Status",values = c("#58BFFF", "#3300FF")) +
+    xlab("") +
+    ylab("") +
+    theme(panel.background = element_blank(), legend.position="top") +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+bar.cat
+```
 
