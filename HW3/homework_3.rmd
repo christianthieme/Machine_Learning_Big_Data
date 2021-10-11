@@ -402,6 +402,7 @@ kknn_acc <- kknn_func(knn_train[,-1],
 head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
 
 acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
+
 ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
