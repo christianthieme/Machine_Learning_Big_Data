@@ -20,6 +20,7 @@ library(MASS)
 library(tidyverse)
 library(caret)
 library(dplyr)
+library(randomForest)
 ```
 
 -   David Moste
@@ -320,3 +321,53 @@ Correct classification rate is  83%
 #Prediction Accuracy
 mean(lda.predictions$class== test.data$Loan_Status)
 ```
+
+
+### Decision Tree
+
+A decision tree is a supervised machine learning algorithm that can be used for both classification and regression problems. A decision tree is simply a series of sequential decisions made to reach a specific result.
+
+```{r, message=F}
+library(rpart)
+features <- c('Gender', 'Married', 'Dependents', 'Education', 'ApplicantIncome',
+              'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term', 'Credit_History',
+              'Property_Area', 'Self_Employed')
+
+dt <- rpart(Loan_Status~., data=train.data %>% dplyr::select(c(all_of(features), Loan_Status)), method = "class")
+dt
+```
+
+The decision tree approves 70% of the loans and denies 30%.
+
+```{r}
+library(rpart.plot)
+rpart.plot(dt)
+```
+
+From the plot above we can see that having no credit history is a major factor in determining if the loan will be approved or not, followed by marriage, income and dependents. On closer examination having a good credit history and being married gives the highest chance to being approved.
+
+
+```{r}
+dt.predictions <- predict(dt, test.data, type='class')
+confusionMatrix(table(dt.predictions, test.data$Loan_Status), positive='Y')
+```
+
+The confusion matrix shows we correctly predicted Y 59 and N 14 times. Our model has higher precision (Pos Pred Value) than recall (Neg Perd Value). So if someone qualifies for a loan that is more accurate than someone being denied a loan.
+
+### Random Forest
+
+The decision tree algorithm is quite easy to understand and interpret. But often, a single tree is not sufficient for producing effective results. This is where the Random Forest algorithm comes into the picture
+
+```{r}
+rf <- randomForest(Loan_Status~., data=train.data %>% dplyr::select(c(all_of(features), Loan_Status)), method = "class")
+rf
+```
+
+The random forest was made with 500 trees.
+
+```{r}
+rf.predictions <- predict(rf, test.data, type='class')
+confusionMatrix(table(rf.predictions, test.data$Loan_Status), positive='Y')
+```
+
+The confusion matrix shows we correctly predicted Y 58 and N 15 times. Our model has higher recall (Neg Perd Value) than precision (Pos Pred Value). So if someone does not qualify for a loan that is more accurate than if someone qualifies.
