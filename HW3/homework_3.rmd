@@ -320,3 +320,89 @@ Correct classification rate is  83%
 #Prediction Accuracy
 mean(lda.predictions$class== test.data$Loan_Status)
 ```
+
+### KNN
+
+To start with, knn is reliant on there being no missing data. To fill in the gaps, we can either impute or omit our missing values. Since we have already omitted these observations for LDA, we'll continue with that method here and directly pull from our loans2 dataset.
+
+Following the required omission/imputation of missing data, we need to do a little bit of preprocessing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of preprocessing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
+
+```{r}
+library(caret)
+library(e1071)
+
+knn_features <- subset(loans2, select=-c(Loan_Status))
+
+knn_trans <- preProcess(knn_features,
+                        method = c("center", "scale"))
+
+knn_transformed_feat <- predict(knn_trans, knn_features)
+
+nzv <- nearZeroVar(knn_transformed_feat, saveMetrics = TRUE)
+nzv[nzv[,"nzv"] == TRUE,]
+```
+
+It turns out that none of our predictors have near-zero variance, so we're good to proceed!
+
+At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove Loan-ID since it will throw off our KNN model.
+
+```{r}
+knn_processed <- cbind(loans2[,13], knn_transformed_feat)
+knn_processed <- subset(knn_processed, select=-c(Loan_ID))
+names(knn_processed)[1] <- ("Loan_Status")
+knn_processed <- knn_processed[complete.cases(knn_processed),]
+
+set.seed(54321)
+train_ind <- sample(seq_len(nrow(knn_processed)),
+                    size = floor(0.75*nrow(knn_processed)))
+knn_train <- knn_processed[train_ind,]
+knn_test <- knn_processed[-train_ind,]
+```
+
+Our KNN model uses the kknn library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). Our model found that a k value of around 9 with a distance of 5 and a weighting function of rectangular produced the best model with an accuracy of 82.5%.
+
+```{r}
+library(kknn)
+library(ggplot2)
+
+kknn_func <- function(train_x, train_y, test_x, test_y){
+  mape_df <- data.frame(matrix(nrow = 0, ncol = 4))
+  
+  weights <- c("rectangular","triangular",
+               "biweight","triweight")
+  
+  for(d in 1:10){
+    for(w in weights){
+      for(i in 2:30){
+        kknnModel <- kknn(train_y ~ .,
+                          train_x,
+                          test_x,
+                          k = i,
+                          distance = d,
+                          kernel = w)
+        
+        cM <- table(test_y, fitted(kknnModel))
+        accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
+        mape_df <- rbind(mape_df,c(i,accuracy,w,d))
+      }
+    }
+  }
+  colnames(mape_df) <- c("k", "Accuracy","Weight","Distance")
+  mape_df[,1] <- as.integer(mape_df[,1])
+  mape_df[,2] <- as.numeric(mape_df[,2])
+  mape_df[,4] <- as.integer(mape_df[,4])
+  return(mape_df)
+}
+
+kknn_mape <- kknn_func(knn_train[,-1],
+                       knn_train[,1],
+                       knn_test[,-1],
+                       knn_test[,1])
+
+ggplot(data = kknn_mape, aes(x = k, y = Accuracy, color = Weight)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "KKNN: k distribution",
+       x = "k",
+       y = "Accuracy")
+```
