@@ -325,7 +325,7 @@ mean(lda.predictions$class== test.data$Loan_Status)
 
 To start with, knn is reliant on there being no missing data. To fill in the gaps, we can either impute or omit our missing values. Since we have already omitted these observations for LDA, we'll continue with that method here and directly pull from our loans2 dataset.
 
-Following the required omission/imputation of missing data, we need to do a little bit of preprocessing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of preprocessing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
+Following the required omission/imputation of missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
 ```{r}
 library(caret)
