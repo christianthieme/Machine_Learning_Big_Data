@@ -366,7 +366,7 @@ library(kknn)
 library(ggplot2)
 
 kknn_func <- function(train_x, train_y, test_x, test_y){
-  mape_df <- data.frame(matrix(nrow = 0, ncol = 4))
+  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
   
   weights <- c("rectangular","triangular",
                "biweight","triweight")
@@ -383,23 +383,23 @@ kknn_func <- function(train_x, train_y, test_x, test_y){
         
         cM <- table(test_y, fitted(kknnModel))
         accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-        mape_df <- rbind(mape_df,c(i,accuracy,w,d))
+        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
       }
     }
   }
-  colnames(mape_df) <- c("k", "Accuracy","Weight","Distance")
-  mape_df[,1] <- as.integer(mape_df[,1])
-  mape_df[,2] <- as.numeric(mape_df[,2])
-  mape_df[,4] <- as.integer(mape_df[,4])
-  return(mape_df)
+  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
+  acc_df[,1] <- as.integer(acc_df[,1])
+  acc_df[,2] <- as.numeric(acc_df[,2])
+  acc_df[,4] <- as.integer(acc_df[,4])
+  return(acc_df)
 }
 
-kknn_mape <- kknn_func(knn_train[,-1],
-                       knn_train[,1],
-                       knn_test[,-1],
-                       knn_test[,1])
+kknn_acc <- kknn_func(knn_train[,-1],
+                      knn_train[,1],
+                      knn_test[,-1],
+                      knn_test[,1])
 
-ggplot(data = kknn_mape, aes(x = k, y = Accuracy, color = Weight)) +
+ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
   labs(title = "KKNN: k distribution",
