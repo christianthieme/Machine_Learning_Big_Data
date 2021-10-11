@@ -344,7 +344,7 @@ nzv[nzv[,"nzv"] == TRUE,]
 
 It turns out that none of our predictors have near-zero variance, so we're good to proceed!
 
-At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove Loan-ID since it will throw off our KNN model.
+At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove Loan_ID since it will throw off our KNN model (a random categorical variable that has nothing to do with the response).
 
 ```{r}
 knn_processed <- cbind(loans2[,13], knn_transformed_feat)
