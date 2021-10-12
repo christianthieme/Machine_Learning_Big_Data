@@ -238,17 +238,7 @@ visdat::vis_miss(loans, sort_miss = TRUE)
 7 columns have missing data, ranging from 0.49% to 8.14%. What's interesting is there are 22 instances where `LoanAmount` is missing. In total, \~2% of the data has missing values.
 
 
-## Data Prep and Cleaning
-
-* NEED TO CHANGE CREDIT_HISTORY TO CATEGORICAL 
-* POSSIBLY IMPUTE MISSING VALUES???
-
-
-
-
-
-
-Having completed our EDA and data cleaning, we'll now turn our attention to modeling. 
+Having completed our EDA, we'll now turn our attention to modeling. 
 
 
 ## Modeling
@@ -411,7 +401,7 @@ ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
        y = "Accuracy")
 ```
 
-Just to validate the results obtained, we ranfomized our training and testing sets one more time and checked to see if the results were similar.
+Just to validate the results obtained, we randomized our training and testing sets one more time and checked to see if the results were similar.
 
 ```{r}
 set.seed(12345)
