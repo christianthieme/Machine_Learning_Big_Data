@@ -331,7 +331,7 @@ It appears that LDA has a correct classification rate of 83%. We'll use this as 
 
 ### KNN
 
-KNN is requires that there being no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already omitted these observations for LDA, we'll continue with that method here.
+KNN requires that there is no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already omitted these observations for LDA, we'll continue with that method here.
 
 Following the required omission of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
@@ -415,13 +415,15 @@ From the visual above, we can see that our model found that a k value of around 
 To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
 
 ```{r warning=FALSE}
+library(kknn)
+library(ggplot2)
+
 set.seed(12345)
 train_ind <- sample(seq_len(nrow(knn_processed)),
                     size = floor(0.75*nrow(knn_processed)))
 knn_train <- knn_processed[train_ind,]
 knn_test <- knn_processed[-train_ind,]
-library(kknn)
-library(ggplot2)
+
 kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
   
