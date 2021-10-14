@@ -3,6 +3,7 @@ title: "Homework #3 DATA622"
 author: "Group 1"
 date: "9/23/2021"
 output:
+  pdf_document: default
   html_document: 
     toc: true
     toc-title: "Homework #3 DATA622"
@@ -12,7 +13,6 @@ output:
       smooth_scroll: false
     theme: united
     highlight: tango
-  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -473,25 +473,6 @@ ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
 After tuning our hyper parameters again, we arrived at a similar result: a k value of around 9 and a rectangular weighting provided us with the best version of a KNN model.
 
 
-```{r}
-
-# K = 9 
-classifier_knn <- kknn( knn_train[,1] ~ .,
-                          knn_train[,-1],
-                          knn_test[,-1],
-                          k = 9,
-                          #distance = 10,
-                          kernel = 'optimal')
-
-cM <- table( knn_test[,1], fitted(classifier_knn))
-accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-
-print(paste('Accuracy (k=9):', accuracy))
-
-
-```  
-
-
 ---
 
 ### Decision Tree  
@@ -554,7 +535,7 @@ Here we summarize the accuracy of each of our models:
 | Model                | Accuracy                 |
 |----------------------|--------------------------|
 | LDA                  | 0.8316                   |
-| KNN                  | 0.8000                   |
+| KNN                  | 0.8250                   |
 | Decision Tree        | 0.7684                   |
 | Random Forest        | 0.7789                   |
 
