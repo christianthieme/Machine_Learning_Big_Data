@@ -417,13 +417,11 @@ To validate these results, we'll randomize our training and testing sets one mor
 ```{r warning=FALSE}
 library(kknn)
 library(ggplot2)
-
 set.seed(12345)
 train_ind <- sample(seq_len(nrow(knn_processed)),
                     size = floor(0.75*nrow(knn_processed)))
 knn_train <- knn_processed[train_ind,]
 knn_test <- knn_processed[-train_ind,]
-
 kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
   
@@ -468,6 +466,26 @@ ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
 
 After tuning our hyper parameters again, we arrived at a similar result: a k value of around 9 and a rectangular weighting provided us with the best version of a KNN model.
 
+
+```{r}
+library(FNN)
+# K = 9 
+classifier_knn <- kknn( knn_train[,1] ~ .,
+                          knn_train[,-1],
+                          knn_test[,-1],
+                          k = 9,
+                          #distance = 10,
+                          kernel = 'optimal')
+
+cM <- table( knn_test[,1], fitted(classifier_knn))
+accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
+
+print(paste('Accuracy (k=9):', accuracy))
+
+
+```  
+
+
 ---
 
 ### Decision Tree  
@@ -475,7 +493,6 @@ After tuning our hyper parameters again, we arrived at a similar result: a k val
 A decision tree is a supervised machine learning algorithm that can be used for both classification and regression problems. A decision tree is simply a series of sequential decisions made to reach a specific result.
 
 ```{r, message=F, warning=FALSE}
-
 features <- c('Gender', 'Married', 'Dependents', 'Education', 'ApplicantIncome',
               'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term', 'Credit_History',
               'Property_Area', 'Self_Employed')
@@ -486,7 +503,6 @@ dt
 Running our data through a decision tree approves 70% of the loans and denies 30%.
 
 ```{r message=FALSE, warning=FALSE}
-
 rpart.plot(dt)
 ```
 
@@ -529,7 +545,7 @@ The confusion matrix shows we correctly predicted Yes 58 times and No 15 times. 
 We will now compare our Decision Tree and  Random Forest models to interpret their common classification metrics and determine which has the greatest predictive accuracy.
 
 ```{r}
-
+library(kableExtra)
 
 DT_Model <- confusionMatrix(dt.predictions, test.data$Loan_Status)$byClass 
 DT_Model <- data.frame(DT_Model)
@@ -542,12 +558,23 @@ compare <- data.frame(DT_Model, RF_Model)
 compare %>%  kableExtra::kbl() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),latex_options="scale_down")
 ```
 
-We can see from the above that the random forest tree has the better performance then the decision tree model for many of the parameters like Sensitivity, Neg Pred Value and Balanced Accuracy. Thus, RF Model performs better at predicting loan approvals and predicting loan rejections.
+We can see from the above that the random forest tree has the better performance then the decision tree model for many of the parameters like Sensitivity, Neg Pred Value and Balanced Accuracy. Thus, RF Model performs better  predicting loan approvals and predicting loan rejections.
 
 ---
 
 ## Summary
 
-Based on our analysis and modeling, the random forest algorithm looks to be the best choice for modeling this dataset. While decision trees are often easier to interpret, the random forest does a better job handling the noise within the dataset, which ultimately produces more accurate predictions. Also with a slightly higher Accuracy of 0.7789 against the Accuracy of 0.7684 of the decision tree; our random forest is the better performing model of the two. 
+
+Listing the Accuracy of all our models: 
+
+| Model                | Accuracy                 |
+|----------------------|--------------------------|
+| LDA                  | 0.8315789                |
+| KNN                  | 0.8                   |
+| decision tree        | 0.7684                   |
+| random forest        | 0.7789                   |
+
+
+Based on the prediction accuracy of the LDA , the KNN, the Decision tree and the Random Forest models, we can  say that the LDA had the better accuracy. The LDA is the better performing model of the four. 
 
 ---
