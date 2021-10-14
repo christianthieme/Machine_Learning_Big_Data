@@ -34,6 +34,11 @@ library(rpart.plot)
 library(rpart)
 library(randomForest)
 library(kableExtra)
+library(caret)
+library(e1071)
+library(kknn)
+library(ggplot2)
+library(FNN)
 ```
 
 -   David Moste
@@ -110,8 +115,10 @@ summary.cat2 <- summary(train.cat[, c('Gender', 'Married', 'Education', 'Self_Em
 
 
 ```{r t2, echo=FALSE}
-knitr::kable(summary.stat.num)
+knitr::kable(summary.stat.num) %>%
+  kable_styling()
 ```
+
 
 Looking at the above summary table, we can see that there are outliers present in all numerical variables, with `ApplicantIncome` being the worst offender. Even at three times the standard deviation, its maximum value lies far outside of the 68-95-99.7 rule. There is also a significant difference between its mean and median, indicating there is skew present in this variable as well. Further, we'll look at the distribution of each of these features:
 
@@ -189,12 +196,14 @@ These charts are pretty hard to read, and again, we don't see any significant re
 Next, let's turn our attention to our categorical variables. We have both binary categorical variables, and variables with 3 or more classes. 
 
 ```{r t3, echo=FALSE}
-knitr::kable(summary.cat1, caption="Summary statistics for Categorical Variables")
+knitr::kable(summary.cat1, caption="Summary statistics for Categorical Variables") %>%
+  kable_styling()
 ```
 
 
 ```{r t4, echo=FALSE}
-knitr::kable(summary.cat2, caption="Summary statistics for Binary Categorical Variables")
+knitr::kable(summary.cat2, caption="Summary statistics for Binary Categorical Variables") %>%
+  kable_styling()
 ```
 
 `Dependents` and `Property_Area` each comprise multiple categories. On the other hand, `Gender`, `Married`, `Education`, `Self_Employed`, `Credit_History`, `Loan_Status` are all binaries. These summary tables are helpful, although sometimes its easier to view this data in a visual format: 
@@ -336,8 +345,7 @@ KNN requires that there is no missing data in the dataset. Based on our analysis
 Following the required omission of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
 ```{r}
-library(caret)
-library(e1071)
+
 knn_features <- subset(loans2, select=-c(Loan_Status))
 knn_trans <- preProcess(knn_features,
                         method = c("center", "scale"))
@@ -365,8 +373,7 @@ knn_test <- knn_processed[-train_ind,]
 Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). 
 
 ```{r warning=FALSE}
-library(kknn)
-library(ggplot2)
+
 kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
   
@@ -415,8 +422,7 @@ From the visual above, we can see that our model found that a k value of around 
 To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
 
 ```{r warning=FALSE}
-library(kknn)
-library(ggplot2)
+
 set.seed(12345)
 train_ind <- sample(seq_len(nrow(knn_processed)),
                     size = floor(0.75*nrow(knn_processed)))
@@ -468,7 +474,7 @@ After tuning our hyper parameters again, we arrived at a similar result: a k val
 
 
 ```{r}
-library(FNN)
+
 # K = 9 
 classifier_knn <- kknn( knn_train[,1] ~ .,
                           knn_train[,-1],
@@ -542,10 +548,23 @@ The confusion matrix shows we correctly predicted Yes 58 times and No 15 times. 
 
 ## Model Comparison  
 
-We will now compare our Decision Tree and  Random Forest models to interpret their common classification metrics and determine which has the greatest predictive accuracy.
+Here we summarize the accuracy of each of our models: 
+
+
+| Model                | Accuracy                 |
+|----------------------|--------------------------|
+| LDA                  | 0.8316                   |
+| KNN                  | 0.8000                   |
+| Decision Tree        | 0.7684                   |
+| Random Forest        | 0.7789                   |
+
+
+Based on the prediction accuracy, LDA appears to be the most accurate model. With the goal of building the most accurate model, We would select this model above the others.
+
+However, if the goal of the model was accuracy as well as interpretability, we would potentially select one of the tree based methods as there are many tools available to see visually how the model is making predictions. Based on our summary table above, it appears that both the decision tree and random forest model have fairly similar accuracy. Let's break down these metrics to see if one is a clear winner over the other. 
+
 
 ```{r}
-library(kableExtra)
 
 DT_Model <- confusionMatrix(dt.predictions, test.data$Loan_Status)$byClass 
 DT_Model <- data.frame(DT_Model)
@@ -558,23 +577,13 @@ compare <- data.frame(DT_Model, RF_Model)
 compare %>%  kableExtra::kbl() %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),latex_options="scale_down")
 ```
 
-We can see from the above that the random forest tree has the better performance then the decision tree model for many of the parameters like Sensitivity, Neg Pred Value and Balanced Accuracy. Thus, RF Model performs better  predicting loan approvals and predicting loan rejections.
+
+We can see from the above that the random forest has better performance than the decision tree model for many of the metrics like Sensitivity, Neg Pred Value, and Balanced Accuracy. Based on these metrics, we would conclude that the random forest model would generate more accurate predictions. 
 
 ---
 
-## Summary
+## Conclusion and Next Steps
 
+Based on our extensive EDA and modeling, LDA was chosen as our preferred predictive model based on accuracy. However, if interpretability was a large factor, we would consider selection the random forest model.
 
-Listing the Accuracy of all our models: 
-
-| Model                | Accuracy                 |
-|----------------------|--------------------------|
-| LDA                  | 0.8315789                |
-| KNN                  | 0.8                   |
-| decision tree        | 0.7684                   |
-| random forest        | 0.7789                   |
-
-
-Based on the prediction accuracy of the LDA , the KNN, the Decision tree and the Random Forest models, we can  say that the LDA had the better accuracy. The LDA is the better performing model of the four. 
-
----
+Next steps for this analysis may include such things as trying different imputation methods for the nulls within the dataset and trying more advanced algorithms like XGBOOST to see if we could gain additional accuracy. 
