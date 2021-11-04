@@ -1,0 +1,67 @@
+---
+title: "HW4 - DATA622"
+author: "Group 1"
+date: "11/3/2021"
+output:
+  html_document: 
+    toc: true
+    toc-title: "HW4 - DATA622"
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    theme: united
+    highlight: tango
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+
+### Group 1 Members:
+-   David Moste
+-   Vinayak Kamath
+-   Kenan Sooklall
+-   Christian Thieme
+-   Lidiia Tronina
+
+\pagebreak
+
+## Introduction
+
+For this project, we will be working with a mental health [dataset](https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/HW4/ADHD_data.csv) obtained from a previously completed ADHD research project. The dataset contains information from 175 individuals who took part in the study and includes 54 columns broken into the following categories: 
+
+| Excel Column | Variable                 | Key                                  |
+|--------------|--------------------------|--------------------------------------|
+| C            | Sex                      |  Male-1, Female-2                    |
+| D            | Race                     |  White-1, African American-2, Hispanic-3, Asian-4, Native American-5, Other or missing data -6 |
+| E-W          | ADHD self-report scale | Never-0, rarely-1, sometimes-2, often-3, very often-4 |
+| X-AM         | Mood disorder questions |  No-0, yes-1; question 3: no problem-0, minor-1, moderate-2, serious-3 |
+| AN-AS        | Individual substances misuse |  no use-0, use-1, abuse-2, dependence-3 |
+| AT           | Court Order |  No-0, Yes-1 |
+| AU           | Education | 1-12 grade, 13+ college |
+| AV           | History of Violence | No-0, Yes-1 |
+| AW           | Disorderly Conduct | No-0, Yes-1 |
+| AX           | Suicide attempt | No-0, Yes-1 |
+| AY           | Abuse History | No-0, Physical (P)-1, Sexual (S)-2, Emotional (E)-3, P&S-4, P&E-5, S&E-6, P&S&E-7 |
+| AZ           | Non-substance-related Dx | 0 – none; 1 – one; 2 – More than one |
+| BA           | Substance-related Dx | 0 – none; 1 – one Substance-related; 2 – two; 3 – three or more |
+| BB           | Psychiatric Meds | 0 – none; 1 – one psychotropic med; 2 – more than one psychotropic med | 
+
+
+Our task is first to explore the data, then using the understanding gained, to build a clustering model to determine different segments of patients. Additionally, we'll perform Principal Component Analysis on a subset of the dataset to see what information can be gleaned. Finally, we'll use Gradient Boosting and Support Vector Machines to predict if a patient will commit suicide.  
+
+As can be seen from the table above, the dataset has a wide variety of numeric and categorical data. We'll dive deeper into this data now.
+
+## Exploratory Data Analysis
+
+```{r message=FALSE, warning=FALSE}
+adhd <- readr::read_csv('https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/HW4/ADHD_data.csv')
+```
+
+
+
