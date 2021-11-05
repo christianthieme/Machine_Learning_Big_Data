@@ -19,6 +19,9 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(inspectdf)
+library(psych)
+library(kableExtra)
 ```
 
 
@@ -59,9 +62,79 @@ As can be seen from the table above, the dataset has a wide variety of numeric a
 
 ## Exploratory Data Analysis
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 adhd <- readr::read_csv('https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/HW4/ADHD_data.csv')
 ```
 
+Let’s begin exploring by taking a high level look at our dataset:
+
+```{r}
+glimpse(adhd)
+```
+We can see that there is a mix of both numeric and categorical data. We note that most of the numerical features are actually binary categorical variables. Before going too far, let's change the data type of these variables so we can explore our data properly: 
+
+```{r}
+adhd <- adhd %>% mutate_if(is.double, as.factor)
+adhd$Age <- as.integer(adhd$Age)
+
+inspectdf::inspect_types(adhd) %>%
+  show_plot
+```
+Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there is one column that is of type character and another column that is of type integer. 
+
+## Numerical Features
+
+```{r}
+table <- describe(adhd$Age)[,c(2,8,3,5,9,4)]
+rownames(table) <-  c('Age')
+
+
+knitr::kable(table) %>%
+  kable_styling()
+```
+Looking at the summary above, we can see that the age of the subjects of this research study are between 1 and 42 with the median value being 25. Let's now take a look at the shape of our distribution and see if there are significant outliers: 
+
+```{r}
+inspectdf::inspect_num(adhd) %>% 
+ show_plot()
+```
+In looking at the distribution of age, it appears that our dataset is multi-modal. This often means that there are sub-populations within the data. We'll keep this in mind as we continue our exploration. We do not see any significant outliers. 
+
+Later, we will be building models to attempt to predict individuals who have committed suicide. As such, we'll look at the distribution of Age broken down by whether an individual has attempted suicide or not: 
+
+
+```{r}
+ggplot(adhd %>% filter(Suicide %in% c(1,0)) ) + 
+  aes( y = Age, fill = Suicide) + 
+  geom_histogram() +
+  coord_flip()
+ 
+```
+
+Based on the histogram above, we do not note any significant differences in the distributions. However, this may be more easily determined by looking at a boxplot. 
+
+```{r}
+ ggplot(adhd %>% filter(Suicide %in% c(1,0))) + 
+       aes(x = Suicide, y = Age) + 
+       geom_boxplot(color = 'steelblue', 
+                    outlier.color = 'firebrick', 
+                    outlier.alpha = 0.35) +
+        labs(title = 'Suicide vs Loan_Status', y = 'Age', x= 'Suicide') +
+        theme_minimal() + 
+        theme(
+          plot.title = element_text(hjust = 0.45),
+          panel.grid.major.y =  element_line(color = "grey", 
+                                             linetype = "dashed"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.y = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          axis.ticks.x = element_line(color = "grey")
+        )
+       
+      
+```
+In looking at the boxplots above, we can see that it does appear that, in general, those who attempted suicide were younger than those who did not. 
+
+## Categorical Features 
 
 
