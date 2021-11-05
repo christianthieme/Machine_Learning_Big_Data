@@ -22,6 +22,8 @@ library(tidyverse)
 library(inspectdf)
 library(psych)
 library(kableExtra)
+library(mice)
+library(janitor)
 ```
 
 
@@ -80,6 +82,7 @@ adhd$Age <- as.integer(adhd$Age)
 inspectdf::inspect_types(adhd) %>%
   show_plot
 ```
+
 Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there is one column that is of type character and another column that is of type integer. 
 
 ## Numerical Features
@@ -103,7 +106,7 @@ In looking at the distribution of age, it appears that our dataset is multi-moda
 Later, we will be building models to attempt to predict individuals who have committed suicide. As such, we'll look at the distribution of Age broken down by whether an individual has attempted suicide or not: 
 
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 ggplot(adhd %>% filter(Suicide %in% c(1,0)) ) + 
   aes( y = Age, fill = Suicide) + 
   geom_histogram() +
@@ -133,8 +136,106 @@ Based on the histogram above, we do not note any significant differences in the 
        
       
 ```
+
 In looking at the boxplots above, we can see that it does appear that, in general, those who attempted suicide were younger than those who did not. 
 
 ## Categorical Features 
 
+Now let’s turn our attention to our categorical variables. We have both binary categorical variables, and variables with 3 or more classes. Looking at this data in a table would be unwieldy due to its size, so we'll visualize this data instead. 
+
+```{r fig.height=10, fig.width=8}
+inspect_cat(adhd) %>% 
+  show_plot()
+```
+
+In looking at the summary table above, we note: 
+
+* `Abuse`: Nearly half of our population has been subject to some type of abuse 
+* `ADHD Q1-18`: There is a fairly equal dispersion between each of these responses
+* `Alcohol`: Alcohol appears to be used by half of our population
+* `Cocaine`: About a 1/3 of the population uses cocaine
+* `Court Order`: Majority of the population does not have a court order
+* `Disorderly Conduct`: Over half of the population has had disorderly conduct
+* `Education`: A very small percentage of population has attended college
+* `Hx of Violence`: Subjects with a history of violence is the minority of the population
+* `MDQ1-MDQ3`: There is a fairly even breakout in response for each of these questions
+* `Non-subst Dx`: We note the presence of quite a few missing values in this column. Most individuals do not have a non-substance prescription
+* `Opiods`: Most subjects do not have opiods
+* `Psych meds.`: The majority of this column is missing data
+* `Race`: The majority of the population is either white or African American
+* `Sedative-hypnotics`: Hardly anyone in the population is using sedative-hypnotics
+* `Sex`: The population is a fairly even split between males and females
+* `Stimulants`: Stimulant usage among the participants is very minimal
+* `Subst Dx`: A fairly even split between each of these categories. We note the presence of quite a few missing values in this column.
+* `Suicide`: It appears that around around a 1/4 of the population has attempted suicide
+* `THC`: THC only affects around 1/3 of our population
+
+Again, we will be building models to predict who has attempted to commit suicide, so it will also be helpful to understand the the distributions of these variables as it relates to our `Suicide` variable, both Yes and No. As mentioned above, only 1/4 of the population has attempted suicide, so we expect counts for those who have attempted suicide to be considerably lower than those who have not, however, we perform this exercise to see anything major sticks out as a red flag. 
+
+```{r  echo=FALSE,warning=FALSE, fig.height=15, fig.width=12}
+suicide_graph <- adhd %>%
+    select(-Age, -Initial, -'ADHD Total', -'MD TOTAL') %>%
+    gather(-Suicide, key = "var", value = "val") %>%
+    ggplot(aes(x = val, fill=factor(Suicide))) +
+    geom_bar(position="dodge", alpha=0.5) +
+    facet_wrap(~ var, scales = "free") +
+    scale_fill_manual("Suicide",values = c("#58BFFF", "#3300FF")) +
+    xlab("") +
+    ylab("") +
+    theme(panel.background = element_blank(), legend.position="top")
+suicide_graph
+```
+
+Based on the charts above, we do not note anything we would consider out of the ordinary where suicide attempts outnumber those who have not attempted suicide for any of the variables. In fact, the distributions look fairly similar given our understanding of the percentage of those who have attempted suicide. 
+
+## Missing Data
+
+As we've seen throughout out EDA, there are quite a few missing values within the columns. Let's take a closer look at this so we can determine the best way to deal with them. 
+
+```{r fig.height=6, fig.width=12}
+visdat::vis_miss(adhd, sort_miss = TRUE)
+```
+
+It appears that about 2.6% of our dataset is missing values and as previously mentioned, `Psych meds.` makes up a large portion of that. Because of this, there would be no good way to impute these values and so we have decided to drop this variable from the dataset. 
+
+```{r}
+adhd <- adhd %>% 
+  select(-`Psych meds.` )
+```
+
+
+Further, we see a pattern within the missing data that many of the respondents who have missing data about a suicide attempt, also have additional missing data. As our objective is to predict suicide attempts, we will drop those subjects who have missing data for that variable since the data will be unusable when it comes to our modeling. 
+
+```{r}
+adhd <- adhd %>% 
+  filter(!is.na(Suicide))
+```
+
+Having adjusted these, let's now look at our missing data again. 
+
+```{r fig.height=6, fig.width=12}
+visdat::vis_miss(adhd, sort_miss = TRUE)
+```
+
+We can see clearly that these adjustments have made a significant impact on the dataset. There is now only 0.4% of our dataset that is missing. We can now use an imputation method to fill in the remainder of the missing values. 
+
+We have chosen to use the pmm method (predictive mean matching) from the mice library to impute our missing values. Predictive mean matching calculates the predicted value for our target variable, and, for missing values, forms a small set of “candidate donors” from the complete cases that are closest to the predicted value for our missing entry. Donors are then randomly chosen from candidates and imputed where values were once missing. To apply pmm we assume that the distribution is the same for missing cells as it is for observed data, and thus, the approach may be more limited when the % of missing values is higher. 
+
+In order to apply this method, we'll need to adjust our column names that have spacing. We can use the `clean_names` function from the `janitor` library to do this for us. Once this is completed, we'll impute our missing values: 
+
+```{r}
+adhd <- adhd %>% 
+  janitor::clean_names()
+
+adhd <- mice(data = adhd, m = 1, method = "pmm", seed = 500)
+adhd <- mice::complete(adhd, 1)
+```
+
+We can see now that we have successfully imputed all missing values: 
+
+```{r}
+visdat::vis_miss(adhd, sort_miss = TRUE)
+```
+
+## Modeling
 
