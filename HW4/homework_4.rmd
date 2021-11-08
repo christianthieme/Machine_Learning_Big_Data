@@ -24,6 +24,9 @@ library(psych)
 library(kableExtra)
 library(mice)
 library(janitor)
+library(e1071)
+library(caret)
+library(tidymodels)
 ```
 
 
@@ -238,4 +241,66 @@ visdat::vis_miss(adhd, sort_miss = TRUE)
 ```
 
 ## Modeling
+
+### Support Vector Machine
+
+A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
+
+We begin by dropped the inital column as that may not carry any predicative information. The data is then split into training and testing
+
+```{r}
+df_split = initial_split(adhd %>% select(-c(initial)), strata=suicide)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+```
+
+The trained dataset is fit to an SVM
+
+```{r}
+set.seed(42)
+svm_model = svm(suicide~., data=df_train, kernel='linear', probability=TRUE)
+summary(svm_model)
+```
+
+Our base model consists of 78 support vectors where 45 are assign to label 0 (no suicide) and 33 to label 1 (suicide)
+
+We will tune the svm with the training set to find the best gamma and cost. The tuning process is done with 10 fold cross validation.
+
+```{r}
+svm_tune <- tune.svm(suicide~., data = df_train, gamma = 0.25, cost = seq(0.1,1,0.1))
+summary(svm_tune)
+svm_best <- svm_tune$best.model
+```
+
+It looks like the best parameters are gamma = 0.25 and cost = 0.1
+
+```{r, echo=F}
+svm_model = svm(suicide~., data=df_train, cost=0.1, gamma=0.25, kernel='linear', probability=TRUE)
+summary(svm_model)
+svm_best <- svm_model
+```
+
+Now with the best model we can test it aganist the train and test set
+
+```{r}
+y_train = predict(svm_best, df_train %>% select(-c(suicide)))
+table(df_train[,'suicide'], y_train)
+
+y_test = predict(svm_best, df_test %>% select(-c(suicide)))
+table(df_test[,'suicide'], y_test)
+confusionMatrix(df_test[,'suicide'], y_test, positive='1')
+```
+
+As we can see the SVM model has 4 False Positive on the training set. However it makes more mistakes on the testing set, which is to be expected. 
+
+```{r}
+pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
+pred_prob <- attr(pred, 'probabilities')
+df_prob <- cbind(df_test %>% select(suicide), y_test, pred_prob)
+names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
+summary(df_prob)
+```
+
+We can see from the predicted probabilities the SVM model is more likely to predict that an individual will not commit suicide.
+
 
