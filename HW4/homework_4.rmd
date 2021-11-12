@@ -305,7 +305,7 @@ ggplot(km_comparison,
        aes(x = as.factor(cluster),
            y = mean,
            fill = as.factor(category))) +
-  geom_bar(position = "fill",
+  geom_bar(position = "dodge",
            stat = "identity") +
   scale_fill_brewer(palette = "Set3") +
   labs(x = "Cluster",
@@ -356,7 +356,7 @@ ggplot(km_comparison,
        aes(x = as.factor(cluster),
            y = mean,
            fill = as.factor(category))) +
-  geom_bar(position = "fill",
+  geom_bar(position = "dodge",
            stat = "identity") +
   scale_fill_brewer(palette = "Set3") +
   labs(x = "Cluster",
