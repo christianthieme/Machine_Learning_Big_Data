@@ -242,11 +242,82 @@ visdat::vis_miss(adhd, sort_miss = TRUE)
 
 ## Modeling
 
+### K-Means Clustering
+
+K-Means clustering is a technique of creating clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (computationally efficient) and disadvantages (results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters), but we ultimately chose to use k-means instead of hierarchical clustering due to there being no real reason to believe this data has a hierarchical structure to it.
+
+The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors. Some of this data came in as factors (despite it being continuous), so we had to convert those to numeric values.
+
+```{r}
+library(tidyverse)
+
+adhd_km <- adhd %>%
+  select(age, md_total, education, adhd_total)
+
+adhd_km <- adhd_km %>%
+  mutate_if(is.factor, as.character) %>%
+  mutate_if(is.character, as.numeric)
+```
+
+The next step was to transform the data. Again, the euclidean based distance measurement calls for us to center and scale the data. We also chose to perform a Box-Cox transformation to help reduce skewness.
+
+```{r}
+library(caret)
+
+adhd_km_trans <- preProcess(adhd_km,
+                            method = c("center", "scale", "BoxCox"))
+adhd_km_trans <- predict(adhd_km_trans, adhd_km)
+```
+
+Now that we have our data all set up, we could go ahead and get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 2 cluster.
+
+```{r}
+library(factoextra)
+
+fviz_nbclust(adhd_km_trans, kmeans, method = "silhouette", k.max = 20)
+```
+
+Now we finally get to create and visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
+
+```{r}
+library(factoextra)
+
+km.res <- kmeans(adhd_km_trans, centers = 2, nstart = 50)
+fviz_cluster(km.res, adhd_km_trans)
+```
+
+What incredible clusters! We wanted to get a better sense of the differences between these clusters and what made them unique, so we went back to the original data and performed a little bit of analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
+
+```{r}
+library(tidyverse)
+
+adhd_km_res <- cbind(adhd_km, km.res$cluster)
+
+km_comparison <- adhd_km_res %>%
+  group_by(km.res$cluster) %>%
+  rename(cluster = `km.res$cluster`) %>%
+  summarise_all(mean) %>%
+  pivot_longer(c("age":"adhd_total"),
+               names_to = "category",
+               values_to = "mean")
+
+ggplot(km_comparison,
+       aes(x = as.factor(cluster),
+           y = mean,
+           fill = as.factor(category))) +
+  geom_bar(position = "fill",
+           stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(x = "Factor",
+       y = "Value",
+       fill = "Cluster")
+```
+
 ### Support Vector Machine
 
 A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
 
-We begin by dropped the inital column as that may not carry any predicative information. The data is then split into training and testing
+We begin by dropped the initial column as that may not carry any predicative information. The data is then split into training and testing
 
 ```{r}
 df_split = initial_split(adhd %>% select(-c(initial)), strata=suicide)
