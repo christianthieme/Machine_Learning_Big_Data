@@ -368,6 +368,8 @@ Adding in just one binary variable - suicide - had a massive impact on our clust
 * We had 4 groups that had non-zero means for suicide (meaning suicide was attempted)
 * Of these 4 groups, 3 had higher ADHD scores, 1 was an older group and 1 was a younger group, and education for all 4 groups was low.
 
+We're curious if the massive increase in the optimal number of clusters was caused by the addition of a single variable or the addition of a binary variable. The best way to tell would be to replace the binary suicide variable with another continuous variable, but we already used all of the provided continuous variables. We could always remove one of our original variables and retain the binary suicide variable, but even this would cause some level of distortion.
+
 ### Support Vector Machine
 
 A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
