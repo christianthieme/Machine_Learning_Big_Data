@@ -308,10 +308,14 @@ ggplot(km_comparison,
   geom_bar(position = "fill",
            stat = "identity") +
   scale_fill_brewer(palette = "Set3") +
-  labs(x = "Factor",
+  labs(x = "Cluster",
        y = "Value",
-       fill = "Cluster")
+       fill = "Factor")
 ```
+
+By looking at these two clusters, we can see that one of our clusters has a high total ADHD and MD score while also having a lower age and education. This would indicate that our two groups are the following:
+*Younger and less educated with high ADHD and MD scores
+*Older and more educated with lower ADHD and MD scores
 
 ### Support Vector Machine
 
