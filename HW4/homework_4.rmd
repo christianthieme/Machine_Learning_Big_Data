@@ -364,7 +364,9 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-Adding in just one binary variable - suicide - had a massive impact on our clustering. The optimal number of clusters increased by 600% all the way up to 12 clusters.
+Adding in just one binary variable - suicide - had a massive impact on our clustering. The optimal number of clusters increased by 600% all the way up to 12 clusters. All of a sudden we have clusters that fit a bunch of different scenarios. Based on our clusters, we ended up with the following conclusions:
+* We had 4 groups that had non-zero means for suicide (meaning suicide was attempted)
+* Of these 4 groups, 3 had higher ADHD scores, 1 was an older group and 1 was a younger group, and education for all 4 groups was low.
 
 ### Support Vector Machine
 
