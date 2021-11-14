@@ -27,6 +27,8 @@ library(janitor)
 library(e1071)
 library(caret)
 library(tidymodels)
+library(gbm)
+library(dplyr)
 ```
 
 
@@ -350,17 +352,57 @@ Adding in just one binary variable - suicide - had a massive impact on our clust
 
 We're curious if the massive increase in the optimal number of clusters was caused by the addition of a single variable or the addition of a binary variable. The best way to tell would be to replace the binary suicide variable with another continuous variable, but we already used all of the provided continuous variables. We could always remove one of our original variables and retain the binary suicide variable, but even this would cause some level of distortion.
 
-### Support Vector Machine
+### Gradient Boosting
 
-A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
-
-We begin by dropped the initial column as that may not carry any predicative information. The data is then split into training and testing
+We begin by dropping the initial column as that may not carry any predictive information. The data is then split into training and testing
 
 ```{r}
 df_split = initial_split(adhd %>% select(-c(initial)), strata=suicide)
 df_train <- training(df_split)
 df_test <- testing(df_split)
 ```
+Gradient boosting machines are similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, we grow them sequentially on transformations of the data. Boosting is a method to improve (boost) the week learners sequentially and increase the model accuracy with a combined model.
+
+
+After we tried most combinations of the different metrics, we used gbm function setting parameters the following way:
+
+* the number of trees to 1000, as the minimum number of trees used in the model ensemble is 100. And setting it too high would cause our model to overfit.
+
+* interaction depth (number of splits it has to perform on a tree) to 4.
+
+* distribution type to “adaboost”, as we are working with 0-1 outcomes
+
+
+```{r, message=FALSE}
+modelGBM=gbm(as.character(suicide)~., data=data.frame(df_train)
+             ,n.trees=1000,distribution='adaboost',interaction.depth=4,shrinkage=0.01)
+pgbm=predict(modelGBM,newdata=data.frame(df_test),n.trees = 1000,type='response')
+pgbm[pgbm>0.5]=1
+pgbm[pgbm<=0.5]=0
+summary(modelGBM,
+  cBars = 10,
+  n.trees = modelGBM$n.trees,
+  plotit = TRUE,
+  order = TRUE,
+  method = relative.influence,
+  normalize = TRUE)
+```
+
+The summary function gave us a variable importance plot. `adhd_total`and `md_total` are the most important variables in the model.
+
+
+
+```{r, message=FALSE}
+confusionMatrix(as.factor(df_test$suicide),as.factor(pgbm))
+```
+
+It appears that Boosting has a correct classification rate of 74%. We'll use this as a benchmark as we move forward to an SVM method.
+
+
+### Support Vector Machine
+
+A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
+
 
 The trained dataset is fit to an SVM
 
