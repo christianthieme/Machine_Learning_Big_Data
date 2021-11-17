@@ -679,8 +679,11 @@ Age
 </div>
 <div id="modeling" class="section level2">
 <h2>Modeling</h2>
-<div id="k-means-clustering" class="section level3">
-<h3>K-Means Clustering</h3>
+<div id="unsupervised-learning-and-dimensionality-reduction" class="section level3">
+<h3>Unsupervised Learning and Dimensionality Reduction</h3>
+<p>In the below sections we will explore our dataset further using clustering to see if R can identify any “unseen” patterns within the data. Next, we’ll use principal component analysis (PCA) to reduce the dimensionality of our data and to see if we can identify which features have the highest variance within our dataset.</p>
+<div id="k-means-clustering" class="section level4">
+<h4>K-Means Clustering</h4>
 <p>K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters). We ultimately chose to use k-means instead of hierarchical clustering due to there being no real reason to believe this data has a hierarchical structure to it.</p>
 <p>The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors. Some of this data came in as factors (despite it being continuous), so we had to convert those to numeric values.</p>
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span>
@@ -773,13 +776,13 @@ Age
 <p>We’re curious if the massive increase in the optimal number of clusters was caused by the addition of a single variable or the addition of a binary variable. The best way to tell would be to replace the binary suicide variable with another continuous variable, but we already used all of the provided continuous variables. We could always remove one of our original variables and retain the binary suicide variable, but even this would cause some level of distortion.</p>
 <hr />
 </div>
-<div id="pca" class="section level3">
-<h3>PCA</h3>
-<p>PCA is used in exploratory data analysis and for making predictive models. It is commonly used for dimensionality reduction by projecting each data point onto only the first few principal components to obtain lower-dimensional data while preserving as much of the data’s variation as possible. The first principal component can equivalently be defined as a direction that maximizes the variance of the projected data. The i-th principal component can be taken as a direction orthogonal to the first i-1 principal components that maximizes the variance of the projected data.</p>
-<p>(Source : <a href="https://en.wikipedia.org/wiki/Principal_component_analysis" class="uri">https://en.wikipedia.org/wiki/Principal_component_analysis</a>)</p>
-<p>We’ll use the prcomp() function to reduce the number of dimensions on our entire dataset and measure the amount of variance explained is beneficial: As mentioned PCA works best with numerical data we will neglect the categorical variable Initials. We are now left with a matrix of 52 columns and 150+ rows which we will pass through prcomp( ) function for the principal component analysis.</p>
-<p>This function returns the results as an object of class ‘prcomp’. We will assign the output to a variable named pca.out</p>
-<p>For our PCA analysis we will concentrate on the Mood disorders questions. As the mood swings seems to be a strong reason for suicide attempts.</p>
+</div>
+<div id="principal-component-analysis" class="section level3">
+<h3>Principal Component Analysis</h3>
+<p>PCA is used in exploratory data analysis and for making predictive models. It is commonly used for dimensionality reduction by projecting each data point onto only the first few principal components to obtain lower-dimensional data while preserving as much of the data’s variation as possible. The first principal component can equivalently be defined as a direction that maximizes the variance of the projected data. The i-th principal component can be taken as a direction orthogonal to the first i-1 principal components that maximizes the variance of the projected data. (Source : <a href="https://en.wikipedia.org/wiki/Principal_component_analysis" class="uri">https://en.wikipedia.org/wiki/Principal_component_analysis</a>)</p>
+<p>We’ll use the <code>prcomp()</code> function to reduce the number of dimensions on our entire dataset and measure the amount of variance explained that is beneficial. As mentioned previously, PCA works best with numerical data, as such, we will exclude the categorical variable <code>Initials</code>. We are now left with a matrix of 52 columns and 150+ rows which we will pass through <code>prcomp( )</code> function for the principal component analysis.</p>
+<p>This function returns the results as an object of class ‘prcomp’. We will assign the output to a variable named <code>pca.out</code>.</p>
+<p>For this analysis we will concentrate on the responses to the mood disorders questions as mood swings seems to be a strong predictor for suicide attempts.</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="co">#working on  copy for pca analysis</span></span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>adhd.pca <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(adhd)</span>
 <span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -1167,7 +1170,7 @@ Age
 ## subst_dx            4.368334e-16</code></pre>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(pca.out)</span></code></pre></div>
 <pre><code>## [1] &quot;sdev&quot;     &quot;rotation&quot; &quot;center&quot;   &quot;scale&quot;    &quot;x&quot;</code></pre>
-<p>Next, we will print the summary of the prcomp object and draw a biplot</p>
+<p>Next, we will print the summary of the prcomp object:</p>
 <div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="co"># summary of the prcomp object</span></span>
 <span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(pca.out)</span></code></pre></div>
 <pre><code>## Importance of components:
@@ -1192,7 +1195,7 @@ Age
 ## Proportion of Variance 0.00708 0.00649 0.00527 0.00004 0.000e+00
 ## Cumulative Proportion  0.98819 0.99468 0.99996 1.00000 1.000e+00</code></pre>
 <p>Here we get principal components named PC1-PC52. Each of these explains a percentage of the total variation in the dataset. For example, PC1 explains nearly 22% of the total variance i.e. around One-fourth of the information of the dataset can be encapsulated by just that one Principal Component. PC2 explains 8% and so on.</p>
-<p>Next, Plotting PCA: While plotting a PCA we refer to a scatterplot of the first two principal components PC1 and PC2. These plots reveal the features of data such as non-linearity and departure from normality. PC1 and PC2 are evaluated for each sample vector and plotted.</p>
+<p>Next, we’ll visualize these components to better understand this analysis. While plotting a PCA we refer to a scatter plot of the first two principal components PC1 and PC2. These plots reveal the features of data such as non-linearity and departure from normality. PC1 and PC2 are evaluated for each sample vector and plotted.</p>
 <div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="co"># loading library</span></span>
 <span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggfortify)</span></code></pre></div>
 <pre><code>## Warning: package &#39;ggfortify&#39; was built under R version 4.0.5</code></pre>
@@ -1214,16 +1217,19 @@ Age
 <div class="sourceCode" id="cb42"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>plot.pca.out</span></code></pre></div>
 <pre><code>## NULL</code></pre>
 <p>In a screeplot the ‘arm-bend’ represents a decrease in cumulative contribution. The above plot shows the bend at the second principal component.</p>
-<p>which question may have a heavy bearing on the score : For PC1, we can say that the Question Q1a is the most important (md_q1a -0.26892181) and for PC2, we can say that the Question Q3 is the most important (md_q3 -0.236710147) along with the question on Cocaine (cocaine 0.381655078).</p>
+<p>We can also use this PCA analysis to determine which of the questions accounted for the most variance (had the heaviest bearing on the results). For PC1, we can see that Question Q1a is the most important (md_q1a -0.26892181) and for PC2, we can see that the Question Q3 is the most important (md_q3 -0.236710147) along with the question on Cocaine (cocaine 0.381655078).</p>
 <hr />
 </div>
-<div id="gradient-boosting" class="section level3">
-<h3>Gradient Boosting</h3>
-<p>We begin by dropping the initial column as that may not carry any predictive information. The data is then split into training and testing</p>
+<div id="predicting-suicide-attempts" class="section level3">
+<h3>Predicting Suicide Attempts</h3>
+<p>Having concluded our exploratory data analysis, we’ll build two models to attempt to predict suicide attempts. The first model will leverage gradient boosting and the second model will use support vector machines.</p>
+<div id="gradient-boosting" class="section level4">
+<h4>Gradient Boosting</h4>
+<p>We begin by dropping the <code>Initial</code> column as it doesn’t hold any predictive information. The data is then split into training and testing sets:</p>
 <div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a>df_split <span class="ot">=</span> <span class="fu">initial_split</span>(adhd <span class="sc">%&gt;%</span> <span class="fu">select</span>(<span class="sc">-</span><span class="fu">c</span>(initial)), <span class="at">strata=</span>suicide)</span>
 <span id="cb44-2"><a href="#cb44-2" aria-hidden="true" tabindex="-1"></a>df_train <span class="ot">&lt;-</span> <span class="fu">training</span>(df_split)</span>
 <span id="cb44-3"><a href="#cb44-3" aria-hidden="true" tabindex="-1"></a>df_test <span class="ot">&lt;-</span> <span class="fu">testing</span>(df_split)</span></code></pre></div>
-<p>Gradient boosting machines are similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, we grow them sequentially on transformations of the data. Boosting is a method to improve (boost) the week learners sequentially and increase the model accuracy with a combined model.</p>
+<p>Gradient boosting machines are similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, they are grown sequentially on transformations of the data. Boosting is a method to improve (boost) the weak learners sequentially and increase the model accuracy with a combined model.</p>
 <p>After we tried most combinations of the different metrics, we used gbm function setting parameters the following way:</p>
 <ul>
 <li><p>the number of trees to 1000, as the minimum number of trees used in the model ensemble is 100. And setting it too high would cause our model to overfit.</p></li>
@@ -1326,8 +1332,8 @@ Age
 ## </code></pre>
 <p>It appears that Boosting has a correct classification rate of 74%. We’ll use this as a benchmark as we move forward to an SVM method.</p>
 </div>
-<div id="support-vector-machine" class="section level3">
-<h3>Support Vector Machine</h3>
+<div id="support-vector-machine" class="section level4">
+<h4>Support Vector Machine</h4>
 <p>A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don’t base on the features we have.</p>
 <p>The trained dataset is fit to an SVM</p>
 <div class="sourceCode" id="cb49"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
@@ -1457,6 +1463,40 @@ Age
 ##                Max.   :0.6653   Max.   :0.8922</code></pre>
 <p>We can see from the predicted probabilities the SVM model is more likely to predict that an individual will not commit suicide.</p>
 </div>
+<div id="modeling-comparison" class="section level4">
+<h4>Modeling Comparison</h4>
+<p>A comparison of our gradient boosted model and SVM model are provided below:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Accuracy</th>
+<th>Specificity</th>
+<th>Sensitivity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Gradient Boost</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="even">
+<td>SVM</td>
+<td>67.5%</td>
+<td>71.43%</td>
+<td>40%</td>
+</tr>
+</tbody>
+</table>
+<p>While the accuracy of these models may at first glance seem impressive, the purpose of these models was to predict whether a patient committed suicide or not. This means we shouldn’t necessarily focus on accuracy as our measure for this model, instead we should focus on the sensitivity, which tells us how many of the subjects that did attempt suicide where actually correctly predicted by our model. In looking at our sensitivity above we can see that our results are lackluster. We would not recommend using either of these models to predict suicide attempts in their current state.</p>
+</div>
+</div>
+</div>
+<div id="conclusion" class="section level2">
+<h2>Conclusion</h2>
+<p>Having concluded our analysis and modeling, we can see that this dataset is ripe with information to better understand those with ADHD as well as indicators for those who may be contemplating suicide. As a next step to this project, different/additional features would be used in modeling to see if additional signal could be found to make better predictions for those who may attempt suicide. As can be seen, modeling of this type, if done correctly, has the potential to save lives.</p>
 </div>
 
 

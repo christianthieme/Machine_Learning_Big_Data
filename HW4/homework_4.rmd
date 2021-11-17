@@ -496,7 +496,7 @@ We can also use this PCA analysis to determine which of the questions accounted 
 
 Having concluded our exploratory data analysis, we'll build two models to attempt to predict suicide attempts. The first model will leverage gradient boosting and the second model will use support vector machines. 
 
-### Gradient Boosting
+#### Gradient Boosting
 
 We begin by dropping the `Initial` column as it doesn't hold any predictive information. The data is then split into training and testing sets: 
 
@@ -544,7 +544,7 @@ confusionMatrix(as.factor(df_test$suicide),as.factor(pgbm))
 It appears that Boosting has a correct classification rate of 74%. We'll use this as a benchmark as we move forward to an SVM method.
 
 
-### Support Vector Machine
+#### Support Vector Machine
 
 A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
 
@@ -597,3 +597,20 @@ summary(df_prob)
 
 We can see from the predicted probabilities the SVM model is more likely to predict that an individual will not commit suicide.
 
+#### Modeling Comparison
+
+Detailed results of the individual models are given above, however, a comparison of our gradient boosted model and SVM model are provided below: 
+
+| Model          | Accuracy   | Specificity | Sensitivity |
+|----------------|------------|-------------|-------------|
+| Gradient Boost |     xxx%   |     xxx%    |     xxx%    |          
+| SVM            |     67.5%  |     71.43%  |     40%     |  
+
+
+While the accuracy of these models may at first glance seem impressive, the purpose of these models was to predict whether a patient committed suicide or not. This means we shouldn't necessarily focus on accuracy as our measure for this model, instead we should focus on the sensitivity, which tells us how many of the subjects that did attempt suicide where actually correctly predicted by our model. In looking at our sensitivity above we can see that our results are lackluster. We would not recommend using either of these models to predict suicide attempts in their current state. 
+
+
+
+## Conclusion
+
+Having concluded our analysis and modeling, we can see that this dataset is ripe with information to better understand those with ADHD as well as indicators for those who may be contemplating suicide. As a next step to this project, different/additional features would be used in modeling to see if additional signal could be found to make better predictions for those who may attempt suicide. As can be seen, modeling of this type, if done correctly, has the potential to save lives.  
