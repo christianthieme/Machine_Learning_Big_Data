@@ -379,13 +379,14 @@ adhd.pca <- data.frame(adhd)
 #droping character column for PCA analysis.
 adhd.pca <- adhd.pca[,-1]
 
-#droping ADHD disorders questionnaire column for PCA analysis.
+#droping ADHD disorders questionnaire columnsand the suicide column for PCA analysis.
 adhd.pca <- select(adhd.pca , -c(adhd_q1,adhd_q2, adhd_q3, adhd_q4, adhd_q5, adhd_q6, adhd_q7
                                  , adhd_q8, adhd_q9, adhd_q10, adhd_q11, adhd_q12
                                  , adhd_q13, adhd_q14, adhd_q15, adhd_q16, adhd_q17
-                                 , adhd_q18, adhd_total ))
+                                 , adhd_q18, adhd_total
+                                 , suicide))
 
-#converting columns to numeric from factor ofr PCA analysi
+#converting columns to numeric from factor for PCA analysis
 adhd.pca$sex <- as.numeric(adhd.pca$sex)
 adhd.pca$age <- as.numeric(adhd.pca$age)
 adhd.pca$race <- as.numeric(adhd.pca$race)
@@ -434,7 +435,7 @@ adhd.pca$court_order <- as.numeric(adhd.pca$court_order)
 adhd.pca$education <- as.numeric(adhd.pca$education)
 adhd.pca$hx_of_violence <- as.numeric(adhd.pca$education)
 adhd.pca$disorderly_conduct <- as.numeric(adhd.pca$disorderly_conduct)
-adhd.pca$suicide <- as.numeric(adhd.pca$suicide)
+#adhd.pca$suicide <- as.numeric(adhd.pca$suicide)
 adhd.pca$abuse <- as.numeric(adhd.pca$abuse)
 adhd.pca$non_subst_dx <- as.numeric(adhd.pca$non_subst_dx)
 adhd.pca$subst_dx <- as.numeric(adhd.pca$subst_dx)
@@ -456,7 +457,7 @@ summary(pca.out)
 
 ```
 
-Here we get principal components named PC1-PC52. Each of these explains a percentage of the total variation in the dataset. For example, PC1 explains nearly 22% of the total variance i.e. around One-fourth of the information of the dataset can be encapsulated by just that one Principal Component. PC2 explains 8% and so on. 
+Here we get principal components named PC1-PC32. Each of these explains a percentage of the total variation in the dataset. For example, PC1 explains nearly 22% of the total variance i.e. around One-fourth of the information of the dataset can be encapsulated by just that one Principal Component. PC2 explains 8% and so on. 
 
 Next, we'll visualize these components to better understand this analysis. While plotting a PCA we refer to a scatter plot of the first two principal components PC1 and PC2. These plots reveal the features of data such as non-linearity and departure from normality. PC1 and PC2 are evaluated for each sample vector and plotted. 
 
@@ -465,19 +466,12 @@ Next, we'll visualize these components to better understand this analysis. While
 library(ggfortify)
 
 #The autoplot( ) function of the ‘ggfortify package’ for plotting PCA:
-pca.out.plot <- autoplot(pca.out,
-                          data = adhd,
-                          colour='suicide')
+pca.out.plot <- autoplot(pca.out, data = adhd,colour='suicide' )
   
 pca.out.plot
 ```  
 
-For a better understanding of the linear transformation of features, biplot( ) function also be used to plot  PCA.
-
-```{r}
-biplot.pca.out <- biplot(pca.out)
-biplot.pca.out
-```
+From the above plot, we cannot see a clear clustering of the suicide dots.  With a low 22% and 9%  on PC1 and PC2, that is expected to not have a clear clustering.  
 
 For determining the ideal features which can be justified after performing PCA, the plot( ) function can be used to plot the precomp object.
 
@@ -486,7 +480,7 @@ plot.pca.out <- plot(pca.out, type="l")
 plot.pca.out
 ```  
 
-In a screeplot the ‘arm-bend’ represents a decrease in cumulative contribution. The above plot shows the bend at the second principal component.
+In a screeplot the ‘arm-bend’ represents a decrease in cumulative contribution. The above plot shows the bend at the second principal component. A scree plot is a diagnostic tool to check whether PCA works well on the data or not; PC1 captures the most variation, PC2 — the second most, and so on. We use  scree plot to select the principal components to keep. The ideal curve should be steep and then bends at an 'arm-bend' — this is the cutting-off point — and after that our curve flattens out. In Figure above, just PC 1,2,3,4,5 and 6 are enough to describe the data.
 
 We can also use this PCA analysis to determine which of the questions accounted for the most variance (had the heaviest bearing on the results). For PC1, we can see that Question Q1a is the most important (md_q1a   -0.26892181) and for PC2, we can see that the Question Q3 is the most important (md_q3  -0.236710147) along with the question on Cocaine (cocaine 0.381655078). 
 
