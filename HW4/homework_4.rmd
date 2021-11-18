@@ -63,9 +63,11 @@ For this project, we will be working with a mental health [dataset](https://raw.
 | BB           | Psychiatric Meds | 0 – none; 1 – one psychotropic med; 2 – more than one psychotropic med | 
 
 
-Our task is first to explore the data, then using the understanding gained, to build a clustering model to determine different segments of patients. Additionally, we'll perform Principal Component Analysis on a subset of the dataset to see what information can be gleaned. Finally, we'll use Gradient Boosting and Support Vector Machines to predict if a patient will commit suicide.  
+Our task is first to explore the data, then using the understanding gained, to build a clustering model to determine different segments of patients. Additionally, we'll perform Principal Component Analysis on a subset of the dataset to see what information can be gleaned. Finally, we'll use Gradient Boosting and Support Vector Machines to predict if a patient has attempted suicide.  
 
 As can be seen from the table above, the dataset has a wide variety of numeric and categorical data. We'll dive deeper into this data now.
+
+--- 
 
 ## Exploratory Data Analysis
 
@@ -80,7 +82,7 @@ glimpse(adhd)
 ```
 We can see that there is a mix of both numeric and categorical data. We note that most of the numerical features are actually binary categorical variables. Before going too far, let's change the data type of these variables so we can explore our data properly: 
 
-```{r}
+```{r echo=FALSE}
 adhd <- adhd %>% mutate_if(is.double, as.factor)
 adhd$Age <- as.integer(adhd$Age)
 inspectdf::inspect_types(adhd) %>%
@@ -89,9 +91,9 @@ inspectdf::inspect_types(adhd) %>%
 
 Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there is one column that is of type character and another column that is of type integer. 
 
-## Numerical Features
+### Numerical Features
 
-```{r}
+```{r echo=FALSE}
 table <- describe(adhd$Age)[,c(2,8,3,5,9,4)]
 rownames(table) <-  c('Age')
 knitr::kable(table) %>%
@@ -100,7 +102,7 @@ knitr::kable(table) %>%
 
 Looking at the summary above, we can see that the age of the subjects of this research study are between 1 and 42 with the median value being 25. Let's now take a look at the shape of our distribution and see if there are significant outliers: 
 
-```{r}
+```{r echo=FALSE}
 inspectdf::inspect_num(adhd) %>% 
  show_plot()
 ```
@@ -110,7 +112,7 @@ In looking at the distribution of `Age`, it appears that our dataset is multi-mo
 Later, we will be building models to predict which individuals have attempted suicide. As such, we'll look at the distribution of `Age` broken down by whether an individual has attempted suicide or not: 
 
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, echo=FALSE}
 ggplot(adhd %>% filter(Suicide %in% c(1,0)) ) + 
   aes( y = Age, fill = Suicide) + 
   geom_histogram() +
@@ -120,7 +122,7 @@ ggplot(adhd %>% filter(Suicide %in% c(1,0)) ) +
 
 Based on the histogram above, we do not note any significant differences in the distributions. However, this may be more easily determined by looking at a boxplot. 
 
-```{r}
+```{r echo=FALSE}
  ggplot(adhd %>% filter(Suicide %in% c(1,0))) + 
        aes(x = Suicide, y = Age) + 
        geom_boxplot(color = 'steelblue', 
@@ -143,11 +145,11 @@ Based on the histogram above, we do not note any significant differences in the 
 
 In looking at the boxplots above, we can see that it does appear that, in general, those who attempted suicide were younger than those who did not. 
 
-## Categorical Features 
+### Categorical Features 
 
 Now let’s turn our attention to our categorical variables. We have both binary categorical variables, and variables with 3 or more classes. Looking at this data in a table would be unwieldy due to its size, so we'll visualize this data instead. 
 
-```{r fig.height=10, fig.width=8}
+```{r echo=FALSE, fig.height=10, fig.width=8}
 inspect_cat(adhd) %>% 
   show_plot()
 ```
@@ -192,11 +194,11 @@ suicide_graph
 
 Based on the charts above, we do not note anything we would consider out of the ordinary in comparing these distribution shapes. 
 
-## Missing Data
+### Missing Data
 
 As we've seen throughout our EDA, there are quite a few missing values within the columns. Let's take a closer look at this so we can determine the best way to deal with them. 
 
-```{r fig.height=6, fig.width=12}
+```{r echo=FALSE, fig.height=6, fig.width=12}
 visdat::vis_miss(adhd, sort_miss = TRUE)
 ```
 
@@ -217,7 +219,7 @@ adhd <- adhd %>%
 
 Having adjusted these, let's now look at our missing data again. 
 
-```{r fig.height=6, fig.width=12}
+```{r echo=FALSE, fig.height=6, fig.width=12}
 visdat::vis_miss(adhd, sort_miss = TRUE)
 ```
 
@@ -239,6 +241,8 @@ We can see now that we have successfully imputed all missing values:
 ```{r}
 visdat::vis_miss(adhd, sort_miss = TRUE)
 ```
+
+--- 
 
 ## Modeling
 
@@ -311,8 +315,8 @@ ggplot(km_comparison,
 
 By looking at these two clusters, we can see that one of our clusters has a high total ADHD and MD score while also having a lower age and education. This would indicate that our two groups are the:
 
-*Younger and less educated with high ADHD and MD scores
-*Older and more educated with lower ADHD and MD scores
+* Younger and less educated with high ADHD and MD scores
+* Older and more educated with lower ADHD and MD scores
 
 Out of curiosity, we wanted to add back in a single binary variable, `suicide`, since we knew we would be investigating it later. We knew k-means would struggle with this, but we were curious to see how much it would impact the outcome.
 
@@ -370,7 +374,7 @@ We’ll use the `prcomp()` function to reduce the number of dimensions on our en
 
 This function returns the results as an object of class ‘prcomp’. We will assign the output to a variable named `pca.out`.
 
-For this analysis we will concentrate on the responses to the mood disorders questions as mood swings seems to be a strong predictor for suicide attempts.
+For this analysis we will concentrate on the responses to the mood disorder questions as mood swings seems to be a strong predictor for suicide attempts.
 
 ```{r}
 #working on  copy for pca analysis
@@ -444,8 +448,6 @@ adhd.pca$subst_dx <- as.numeric(adhd.pca$subst_dx)
 pca.out = prcomp(adhd.pca, scale= TRUE )
 pca.out
 
-names(pca.out)
-
 
 ```
 
@@ -459,7 +461,7 @@ summary(pca.out)
 
 Here we get principal components named PC1-PC32. Each of these explains a percentage of the total variation in the dataset. For example, PC1 explains nearly 22% of the total variance i.e. around One-fourth of the information of the dataset can be encapsulated by just that one Principal Component. PC2 explains 8% and so on. 
 
-Next, we'll visualize these components to better understand this analysis. While plotting a PCA we refer to a scatter plot of the first two principal components PC1 and PC2. These plots reveal the features of data such as non-linearity and departure from normality. PC1 and PC2 are evaluated for each sample vector and plotted. 
+Next, we'll visualize these components to better understand this analysis. While plotting a PCA we refer to a scatter plot of the first two principal components PC1 and PC2. These plots reveal the features of the data such as non-linearity and the possible departure from normality. PC1 and PC2 are evaluated for each sample vector and plotted. 
 
 ```{r}
 # loading library
@@ -471,16 +473,15 @@ pca.out.plot <- autoplot(pca.out, data = adhd,colour='suicide' )
 pca.out.plot
 ```  
 
-From the above plot, we cannot see a clear clustering of the suicide dots.  With a low 22% and 9%  on PC1 and PC2, that is expected to not have a clear clustering.  
+From the above plot, we cannot see a clear clustering of the suicide dots.  With a low 22% and 9%  on PC1 and PC2, this is what we'd expect to see.  
 
-For determining the ideal features which can be justified after performing PCA, the plot( ) function can be used to plot the precomp object.
+To determine the ideal number of components to include that captures the most variance, we can use the `plot()` function on the precomp object.
 
-```{r}
-plot.pca.out <- plot(pca.out, type="l")
-plot.pca.out
+```{r message=FALSE, warning=FALSE}
+plot(pca.out, type="l")
 ```  
 
-In a screeplot the ‘arm-bend’ represents a decrease in cumulative contribution. The above plot shows the bend at the second principal component. A scree plot is a diagnostic tool to check whether PCA works well on the data or not; PC1 captures the most variation, PC2 — the second most, and so on. We use  scree plot to select the principal components to keep. The ideal curve should be steep and then bends at an 'arm-bend' — this is the cutting-off point — and after that our curve flattens out. In Figure above, just PC 1,2,3,4,5 and 6 are enough to describe the data.
+In a screeplot the ‘arm-bend’ represents a decrease in cumulative contribution. The above plot shows the bend at the second principal component. A scree plot is a diagnostic tool to check whether PCA works well on the data or not; PC1 captures the most variation, PC2 — the second most, and so on. We use  scree plot to select the principal components to keep. The ideal curve should be steep and then bends at an 'arm-bend' — this is the cutting-off point — and after that our curve flattens out. In the visual above, PC 1,2,3,4,5 and 6 are enough to describe the variance within the data.
 
 We can also use this PCA analysis to determine which of the questions accounted for the most variance (had the heaviest bearing on the results). For PC1, we can see that Question Q1a is the most important (md_q1a   -0.26892181) and for PC2, we can see that the Question Q3 is the most important (md_q3  -0.236710147) along with the question on Cocaine (cocaine 0.381655078). 
 
@@ -518,7 +519,7 @@ Boosting has 5 tuning parameters that we can focus on:
 
 * The distribution type. We will use “adaboost”, as we are working with 0-1 outcomes.
 
-We will tune the model with the training set to find the best combination with lower RMSE error. 
+We will tune the model with the training set to find the best combination with lowest RMSE error. 
 
 ```{r, message=FALSE}
 # search grid
@@ -563,31 +564,44 @@ arrange(hyper_grid, rmse)
 
 We experienced no improvement in our RMSE after we tried to reduce/increase the number of trees.
 
-After this procedure, we took our top model's  hyperparameter settings and used gbm function setting parameters the following way:
+From the results above, we see the optimal hyperparameters are:
 
 * the number of trees to 1000
 
-* interaction depth to 3.
+* interaction depth to 3
 
-* shrinkage to 0.05.
+* shrinkage to 0.01
 
-* n.minobsinnode to 15.
+* n.minobsinnode to 15
+
+We will use these values to build the model for our test set. 
 
 ```{r, message=FALSE}
 set.seed(777)
 modelGBM=gbm(as.character(suicide)~., data=data.frame(df_train)
-             ,n.trees=1000,distribution='adaboost',interaction.depth=3,shrinkage=0.05, n.minobsinnode = 15)
+             ,n.trees=1000,distribution='adaboost',interaction.depth=3,shrinkage=0.01, n.minobsinnode = 15)
 
 print(modelGBM)
 ```
 
 
-The summary function gave us a variable importance plot. `adhd_total`and `md_total` are the most important variables in the model.
-
 ```{r, message=FALSE}
 pgbm=predict(modelGBM,newdata=data.frame(df_test),n.trees = 1000,type='response')
 pgbm[pgbm>0.5]=1
 pgbm[pgbm<=0.5]=0
+
+```
+
+```{r, message=FALSE}
+confusionMatrix(as.factor(df_test$suicide),as.factor(pgbm), positive='1')
+```
+
+
+Above, we can see the accuracy metrics for our final model. It appears that Boosting has a correct classification rate of 65% and a sensitivity of 33%. Obviously with these results, we would not recommend using this model. While we can with some accuracy predict who will not attempt to commit suicide, the model is very bad at predicting who would attempt to commit suicide. However, we'll use these results as a benchmark as we move forward to the SVM method.
+
+As a point of interest, we can use the `summary` function on our final model object to give us a variable importance plot. Not surprisingly, `adhd_total`and `md_total` are the most important variables in the model.
+
+```{r}
 summary(modelGBM,
         cBars = 10,
         n.trees = modelGBM$n.trees,
@@ -597,14 +611,9 @@ summary(modelGBM,
         normalize = TRUE)
 ```
 
-```{r, message=FALSE}
-confusionMatrix(as.factor(df_test$suicide),as.factor(pgbm), positive='1')
-```
-
-It appears that Boosting has a correct classification rate of 69% and a specificity rate is 81%. We'll use this as a benchmark as we move forward to an SVM method.
 
 
-### Support Vector Machine
+#### Support Vector Machine
 
 A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
 
@@ -616,40 +625,39 @@ svm_model = svm(suicide~., data=df_train, kernel='linear', probability=TRUE)
 summary(svm_model)
 ```
 
-Our base model consists of 87 support vectors where 53 are assign to label 0 (no suicide) and 34 to label 1 (suicide)
+Our base model consists of 71 support vectors where 31 are assigned to label 0 (no suicide) and 40 to label 1 (suicide)
 
-We will tune the svm with the training set to find the best values for gamma and cost. The tuning process is done with 10 fold cross validation.
+We will tune the SVM with the training set to find the best values for gamma and cost. The tuning process is done with 10 fold cross validation.
 
 ```{r}
-set.seed(43)
+set.seed(42)
 svm_tune <- tune.svm(suicide~., data = df_train, gamma = 0.25, cost = seq(0.1,1,0.1))
 summary(svm_tune)
 svm_best <- svm_tune$best.model
 ```
 
-It looks like the best parameters are gamma = 0.25 and cost = 0.1
+It looks like the best parameters are gamma = 0.25 and cost = 0.1.
 
 ```{r, echo=F}
+set.seed(42)
 svm_model = svm(suicide~., data=df_train, cost=0.1, gamma=0.25, kernel='linear', probability=TRUE)
 summary(svm_model)
 svm_best <- svm_model
 ```
 
-Now with the best model we can test it against the train and test set
+Now with the best model we can try it against the test set:
 
 ```{r}
-y_train = predict(svm_best, df_train %>% select(-c(suicide)))
-table(df_train[,'suicide'], y_train)
+set.seed(42)
+
 y_test = predict(svm_best, df_test %>% select(-c(suicide)))
-table(df_test[,'suicide'], y_test)
 confusionMatrix(df_test[,'suicide'], y_test, positive='1')
 ```
 
-On the training set the model made few mistakes. It is most accurate at predicting someone will not commit suicide with 83 true negative The largest mistake is 7 false positives, the model predicted that those individuals would commit suicide when they didn't. There is also one false negative. 
-
-On the testing set the same relation applies but the errors are a bit more exaggerated. The most accurate metric is still the true negatives at 25. There is an equal amount of false positives with the training set. However there are 4 false negatives, a situation where the model predicts those individual won't commit suicide when they did.
+Based on the results above, we can see that the model is most accurate at predicting someone who will not commit suicide with 24 true negatives. The largest mistake is 8 false positives, meaning the model predicted that those individuals would attempt suicide when they didn't. There are also 4 false negatives which is a situation where the model predicts those individual won't attempt suicide when they did.
 
 ```{r}
+set.seed(42)
 pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
 pred_prob <- attr(pred, 'probabilities')
 df_prob <- cbind(df_test %>% select(suicide), y_test, pred_prob)
@@ -667,11 +675,11 @@ Detailed results of the individual models are given above, however, a comparison
 
 | Model          | Accuracy   | Specificity | Sensitivity |
 |----------------|------------|-------------|-------------|
-| Gradient Boost |     69.0%  |    80.77%   |     50%     |          
-| SVM            |     67.5%  |     71.43%  |     40%     |  
+| Gradient Boost |     65.0%  |    70.5%   |     33.3%     |          
+| SVM            |     70.0%  |     75.0%  |     50.0%     |  
 
 
-While the accuracy of these models may at first glance seem impressive, the purpose of these models was to predict whether a patient committed suicide or not. This means we shouldn't necessarily focus on accuracy as our measure for this model, instead we should focus on the sensitivity, which tells us how many of the subjects that did attempt suicide where actually correctly predicted by our model. In looking at our sensitivity above we can see that our results are lackluster. We would not recommend using either of these models to predict suicide attempts in their current state. 
+While the accuracy of these models may at first glance seem impressive, the purpose of these models was to predict whether a patient attempted suicide or not. This means we shouldn't necessarily focus on accuracy as our measure for this model, instead we should focus on the sensitivity, which tells us how many of the subjects that did attempt suicide where actually correctly predicted by our model. In looking at our sensitivity above we can see that our results are lackluster. We would not recommend using either of these models to predict suicide attempts in their current state. However, if our objective was to build a model that could predict those who would not attempt suicide, this may be a potential model as both models have a specificity of greater than 70%. 
 
 
 
