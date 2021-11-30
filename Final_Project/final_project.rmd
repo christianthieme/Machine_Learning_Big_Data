@@ -86,119 +86,204 @@ Let’s begin exploring by taking a high level look at our dataset:
 ```{r}
 glimpse(train)
 ```
-We can see that there is a mix of both numeric and categorical data. We note that most of the numerical features are actually binary categorical variables. Before going too far, let's change the data type of these variables so we can explore our data properly: 
+We can see that there is a mix of both numeric and categorical data. We note that most of the columns appear to be categorical data and the column type should be changed to factor. Additionally, our target variable `target` should also be a factor. We'll make these changes now.  
 
 ```{r echo=FALSE}
-adhd <- adhd %>% mutate_if(is.double, as.factor)
-adhd$Age <- as.integer(adhd$Age)
-inspectdf::inspect_types(adhd) %>%
+train <- train %>% 
+  mutate_if(is.character, as.factor) %>%
+  mutate(target = as.factor(target)) 
+ 
+
+inspectdf::inspect_types(train %>% select(-enrollee_id)) %>%
   show_plot
 ```
 
-Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there is one column that is of type character and another column that is of type integer. 
+Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there are two columns that are of type integer. 
 
 ### Numerical Features
 
-```{r echo=FALSE}
-table <- describe(adhd$Age)[,c(2,8,3,5,9,4)]
-rownames(table) <-  c('Age')
-knitr::kable(table) %>%
-  kable_styling()
-```
-
-Looking at the summary above, we can see that the age of the subjects of this research study are between 1 and 42 with the median value being 25. Let's now take a look at the shape of our distribution and see if there are significant outliers: 
+As mentioned previously, we have two numerical features, `city_development_index` and `training_hours`. Let's visualize these distributions to get a better sense of their shape: 
 
 ```{r echo=FALSE}
-inspectdf::inspect_num(adhd) %>% 
+inspectdf::inspect_num(train %>% select(-enrollee_id)) %>% 
  show_plot()
 ```
 
-In looking at the distribution of `Age`, it appears that our dataset is multi-modal. This often means that there are sub-populations within the data. We'll keep this in mind as we continue our exploration. We do not see any significant outliers. 
+In looking at the distribution of `city_development_index`, it appears that our dataset is multi-modal. This often means that there are sub-populations within the data. We'll keep this in mind as we continue our exploration. Additionally, we note that a significant portion of our dataset live where the city_development_index is greater than ~0.87. 
 
-Later, we will be building models to predict which individuals have attempted suicide. As such, we'll look at the distribution of `Age` broken down by whether an individual has attempted suicide or not: 
+As we'd expect, the distribution of `training_hours` is extremely right skewed. We see the majority of the population have less than 100 hours of training.
+
+Let's now visualize the relationship each of these variables has with `target`, starting with `city_development_index`: 
 
 
-```{r message=FALSE, warning=FALSE, echo=FALSE}
-ggplot(adhd %>% filter(Suicide %in% c(1,0)) ) + 
-  aes( y = Age, fill = Suicide) + 
-  geom_histogram() +
-  coord_flip()
- 
+```{r}
+ggplot(train) +
+  aes(x = target, y = city_development_index) + 
+   geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+    labs(title = 'City Development Index vs Target', y = 'City Development Index', x= 'Target') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+  
 ```
 
-Based on the histogram above, we do not note any significant differences in the distributions. However, this may be more easily determined by looking at a boxplot. 
+Looking at the boxplots above, we can see that those who are not looking to leave their jobs, most often, live in cities with a high city development index. Looking at the boxplot on the right of those who are considering leaving their jobs, we can see that the median value is much lower and the interquartile range is much wider. It does appear that `city_development_index` has a strong relationship with `target`. 
 
-```{r echo=FALSE}
- ggplot(adhd %>% filter(Suicide %in% c(1,0))) + 
-       aes(x = Suicide, y = Age) + 
-       geom_boxplot(color = 'steelblue', 
-                    outlier.color = 'firebrick', 
-                    outlier.alpha = 0.35) +
-        labs(title = 'Suicide vs Loan_Status', y = 'Age', x= 'Suicide') +
-        theme_minimal() + 
-        theme(
-          plot.title = element_text(hjust = 0.45),
-          panel.grid.major.y =  element_line(color = "grey", 
-                                             linetype = "dashed"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.y = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          axis.ticks.x = element_line(color = "grey")
-        )
-       
-      
+We'll now look at the relationship between `training_hours` and `target`: 
+
+```{r}
+ggplot(train) +
+  aes(x = target, y = training_hours) + 
+   geom_boxplot(color = 'steelblue', outlier.color = 'firebrick', outlier.alpha = 0.35) +
+    labs(title = 'Training Hours vs Target', y = 'Training Hours', x= 'Target') +
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.45),
+    panel.grid.major.y =  element_line(color = "grey", linetype = "dashed"),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    axis.ticks.x = element_line(color = "grey")
+  )
+  
 ```
 
-In looking at the boxplots above, we can see that it does appear that, in general, those who attempted suicide were younger than those who did not. 
+In looking at the boxplots above, we do not note a significant relationship between this variable and `target`. In fact, the boxplots are almost identical. 
+
 
 ### Categorical Features 
 
-Now let’s turn our attention to our categorical variables. We have both binary categorical variables, and variables with 3 or more classes. Looking at this data in a table would be unwieldy due to its size, so we'll visualize this data instead. 
+Now let’s turn our attention to our categorical variables. We'll start by visualizing this data: 
 
 ```{r echo=FALSE, fig.height=10, fig.width=8}
-inspect_cat(adhd) %>% 
+inspect_cat(train) %>% 
   show_plot()
 ```
 
-In looking at the summary table above, we note: 
+In looking at the visualization above, we note: 
 
-* `Abuse`: Nearly half of our population has been subject to some type of abuse 
-* `ADHD Q1-18`: There is a fairly equal dispersion between each of these responses
-* `Alcohol`: Alcohol appears to be used by half of our population
-* `Cocaine`: About a 1/3 of the population uses cocaine
-* `Court Order`: Majority of the population does not have a court order
-* `Disorderly Conduct`: Over half of the population has had disorderly conduct
-* `Education`: A very small percentage of population has attended college
-* `Hx of Violence`: Very few of the subjects have a history of violence
-* `MDQ1-MDQ3`: There is a fairly even breakout in response for each of these questions
-* `Non-subst Dx`: We note the presence of quite a few missing values in this column. Most individuals do not have a non-substance prescription
-* `Opiods`: Most subjects do not have opiods
-* `Psych meds.`: The majority of this column is missing data
-* `Race`: The majority of the population is either white or African American
-* `Sedative-hypnotics`: Hardly anyone in the population is using sedative-hypnotics
-* `Sex`: The population is a fairly even split between males and females
-* `Stimulants`: Stimulant usage among the participants is very minimal
-* `Subst Dx`: A fairly even split between each of these categories. We note the presence of quite a few missing values in this column
-* `Suicide`: It appears that around around a 1/4 of the population has attempted suicide
-* `THC`: THC only affects around 1/3 of our population
+* `city`: A large portion of our dataset come from 5-6 different cities, however, this factor has many different unique values. 
+* `company_size`: This column was most often left blank. There appear to be a good mix of individuals from every company size. 
+* `company_type`: A large portion of individuals work at a private company. This column was also left blank very frequently. 
+* `education_level`: A large percentage of the population have a graduate degree, which is usually the same as Masters which is the second most frequent value. Perhaps these values should be combined? 
+* `enrolled_university`: About 75% of the population is not enrolled in a university. This is what we'd expect, as most individuals have probably already graduated with their degrees. 
+* `experience`: This column is surprising. Here we see that the largest group in this factor is ">20" years of experience. This is unusual as there are few people in the data science industry with that much experience. We do, however, see a good amount of other responses within this column. 
+* `gender`: The majority of our population is Male or did not answer. This is probably expected as the engineering world often has more men than women. 
+* `last_new_job`: Interestingly, it looks like for a good percentage of our population, they were only at their last job for 1 year. The next largest group was at their last job for ">4" years. 
+* `major_discipline`: Not surprisingly, the overwhelming focus of individual's study was in the STEM field. We note a good population of missing values in this field.
+* `relevant_experience`: It appears that about 2/3 of our dataset has relevant experience
+* `target`: We note a class imbalance here in that it appears that about 75% of our dataset is not looking to leave their current job. 
 
-Again, we will be building models to predict who has attempted to commit suicide, so it will also be helpful to understand the the distributions of these variables as it relates to our `Suicide` variable, both Yes and No. As mentioned above, only 1/4 of the population has attempted suicide, so we expect counts for those who have attempted suicide to be considerably lower than those who have not, however, the purpose of the below charts is simply to compare the shapes of the distributions to determine if anything major sticks out as a red flag. 
 
-```{r  echo=FALSE,warning=FALSE, fig.height=15, fig.width=12}
-suicide_graph <- adhd %>%
-    select(-Age, -Initial, -'ADHD Total', -'MD TOTAL') %>%
-    gather(-Suicide, key = "var", value = "val") %>%
-    ggplot(aes(x = val, fill=factor(Suicide))) +
-    geom_bar(position="dodge", alpha=0.5) +
-    facet_wrap(~ var, scales = "free") +
-    scale_fill_manual("Suicide",values = c("#58BFFF", "#3300FF")) +
-    xlab("") +
-    ylab("") +
-    theme(panel.background = element_blank(), legend.position="top")
-suicide_graph
+As we will be building models to predict `target`, let's see if a relationship exists between these categorical variables and `target`. To do this, we can explore the percentage of individuals who are looking for new jobs vs those who are not at each level of the factor. If we see significant differences between the percentages in each level, we can conclude that the factor and its associated levels are predictive of `target`. 
+
+```{r fig.width= 14, fig.height=15}
+# viz_data <- na.omit(train)
+# 
+#   train_names <- train %>% select_if(is.factor)# %>% select(-Credit_History)
+#   cat_names <- names(train_names)
+#   myGlist <- vector('list', length(train_names))
+#   names(myGlist) <- cat_names
+#   
+#    for (i in  cat_names) {  
+#      
+# myGlist[[i]] <-
+#   
+#     ggplot(viz_data) +
+#     aes_string(x = i, fill=factor(viz_data$target)) + 
+#     geom_bar(aes(y=(..count..)/sum(..count..)), position="dodge", alpha=0.5) +
+#    # facet_wrap(~ var, scales = "free") +
+#     scale_fill_manual("Target",values = c("#58BFFF", "#3300FF")) +
+#    labs(title = paste0(i,' vs target'), y = 'Percent', x= '') +
+#     theme(panel.background = element_blank(), 
+#           legend.position="top")
+#   }
+# 
+#    
+#   
+#   myGlist <- within(myGlist, rm(target, city))
+#   gridExtra::grid.arrange(grobs = myGlist, ncol =2)
 ```
 
-Based on the charts above, we do not note anything we would consider out of the ordinary in comparing these distribution shapes. 
+```{r fig.width= 10, fig.height=25}
+viz_data <- na.omit(train)
+
+  train_names <- train %>% select_if(is.factor)# %>% select(-Credit_History)
+  cat_names <- names(train_names)
+  myGlist <- vector('list', length(train_names))
+  names(myGlist) <- cat_names
+  
+   for (i in  cat_names) {  
+     
+myGlist[[i]] <-
+  
+ggplot(viz_data) +
+    aes_string(x = i, group = viz_data$target) + 
+    geom_bar(aes(y=..prop.., fill=factor(target),  stat= 'count')) +
+    scale_y_continuous(labels=scales::percent) +
+    geom_text(aes( label = scales::percent(..prop..),
+                   y= ..prop.. ), stat= "count", vjust = -.5) +
+    facet_grid(~target, scales = "free") +
+    scale_fill_manual("Target",values = c("#58BFFF", "#3300FF")) +
+   labs(title = paste0(i,' vs target'), y = 'Percent', x= '') +
+    theme(panel.background = element_blank(), 
+          legend.position="top")
+  }
+
+   
+  
+  myGlist <- within(myGlist, rm(target, city))
+  gridExtra::grid.arrange(grobs = myGlist, ncol =1)
+```
+
+```{r}
+# ggplot(viz_data) +
+#     aes(x = education_level, group = target) + 
+#     geom_bar(aes(y=..prop.., fill=factor(target),  stat= 'count')) +
+#     scale_y_continuous(labels=scales::percent) +
+#     geom_text(aes( label = scales::percent(..prop..),
+#                    y= ..prop.. ), stat= "count", vjust = -.5) +
+#     facet_grid(~target, scales = "free") +
+#     scale_fill_manual("Target",values = c("#58BFFF", "#3300FF")) +
+#    labs(title = paste0(,' vs target'), y = 'Percent', x= '') +
+#     theme(panel.background = element_blank(), 
+#           legend.position="top")
+```
+
+
+We exclude a detailed view of `city` because of the number of distinct categories it contains. The below view is more digestible.  
+
+```{r fig.width= 15, fig.height=5}
+    ggplot(viz_data) +
+    aes(x = city, fill=factor(target)) + 
+    geom_bar(aes(y=(..count..)/sum(..count..)), position="dodge", alpha=0.5) +
+   # facet_wrap(~ var, scales = "free") +
+    scale_fill_manual("Target",values = c("#58BFFF", "#3300FF")) +
+    xlab("") +
+    ylab("") +
+    theme(panel.background = element_blank(), 
+          legend.position="top", 
+          axis.text.x = element_text(angle = 90))
+    
+  
+```
+
+
+
+
+
+
+
+
+
+
+
 
 ### Missing Data
 
