@@ -310,63 +310,70 @@ As a conclusion to our exploratory data analysis, we determined it appropriate t
 
 K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters). We ultimately chose to use k-means instead of hierarchical clustering due to there being no real reason to believe this data has a hierarchical structure to it.
 
-The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors. Some of this data came in as factors (despite it being continuous), so we had to convert those to numeric values.
+The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors.
 
 ```{r}
-# library(tidyverse)
-# adhd_km <- adhd %>%
-#   select(age, md_total, education, adhd_total)
-# adhd_km <- adhd_km %>%
-#   mutate_if(is.factor, as.character) %>%
-#   mutate_if(is.character, as.numeric)
+library(tidyverse)
+
+kmeans <- train %>%
+  dplyr::select(city_development_index, training_hours, experience, last_new_job) %>%
+  mutate_if(is.factor, as.character) %>%
+  mutate(experience = replace(experience, experience == ">20", 20)) %>%
+  mutate(experience = replace(experience, experience == "<1", 0)) %>%
+  mutate(last_new_job = replace(last_new_job, last_new_job == ">4", 4)) %>%
+  mutate(last_new_job = replace(last_new_job, last_new_job == "never", 0)) %>%
+  mutate_if(is.character, as.numeric)
 ```
 
 The next step was to transform the data. Again, the euclidean based distance measurement requires that we center and scale the data. We also chose to perform a Box-Cox transformation to help reduce skewness.
 
 ```{r}
-# library(caret)
-# adhd_km_trans <- preProcess(adhd_km,
-#                             method = c("center", "scale", "BoxCox"))
-# adhd_km_trans <- predict(adhd_km_trans, adhd_km)
+library(caret)
+
+kmeans_trans <- preProcess(kmeans,
+                           method = c("center", "scale", "BoxCox"))
+kmeans_trans <- predict(kmeans_trans, kmeans)
 ```
 
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 2 cluster.
 
 ```{r}
-# library(factoextra)
-# fviz_nbclust(adhd_km_trans, kmeans, method = "silhouette", k.max = 20)
+library(factoextra)
+
+fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
 
 ```{r}
-# library(factoextra)
-# km.res <- kmeans(adhd_km_trans, centers = 2, nstart = 50)
-# fviz_cluster(km.res, adhd_km_trans)
+library(factoextra)
+
+km.res <- kmeans(kmeans_trans, centers = 2, nstart = 50)
+fviz_cluster(km.res, kmeans_trans)
 ```
 
 What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
 
 ```{r}
-# library(tidyverse)
-# adhd_km_res <- cbind(adhd_km, km.res$cluster)
-# km_comparison <- adhd_km_res %>%
-#   group_by(km.res$cluster) %>%
-#   rename(cluster = `km.res$cluster`) %>%
-#   summarise_all(mean) %>%
-#   pivot_longer(c("age":"adhd_total"),
-#                names_to = "category",
-#                values_to = "mean")
-# ggplot(km_comparison,
-#        aes(x = as.factor(cluster),
-#            y = mean,
-#            fill = as.factor(category))) +
-#   geom_bar(position = "dodge",
-#            stat = "identity") +
-#   scale_fill_brewer(palette = "Set3") +
-#   labs(x = "Cluster",
-#        y = "Value",
-#        fill = "Factor")
+library(tidyverse)
+km_res <- cbind(kmeans, km.res$cluster)
+km_comparison <- km_res %>%
+  group_by(km.res$cluster) %>%
+  rename(cluster = `km.res$cluster`) %>%
+  summarise_all(mean) %>%
+  pivot_longer(c("city_development_index":"last_new_job"),
+               names_to = "category",
+               values_to = "mean")
+ggplot(km_comparison,
+       aes(x = as.factor(cluster),
+           y = mean,
+           fill = as.factor(category))) +
+  geom_bar(position = "dodge",
+           stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(x = "Cluster",
+       y = "Value",
+       fill = "Factor")
 ```
 
 By looking at these two clusters, we can see that one of our clusters has a high total ADHD and MD score while also having a lower age and education. This would indicate that our two groups are the:
