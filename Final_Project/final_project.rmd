@@ -335,7 +335,7 @@ kmeans_trans <- preProcess(kmeans,
 kmeans_trans <- predict(kmeans_trans, kmeans)
 ```
 
-Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 2 cluster.
+Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
 
 ```{r}
 library(factoextra)
@@ -352,7 +352,7 @@ km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
-What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
+What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly. Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
 
 ```{r}
 library(tidyverse)
@@ -376,12 +376,10 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-By looking at these two clusters, we can see that one of our clusters has a high total ADHD and MD score while also having a lower age and education. This would indicate that our two groups are the:
+These 8 groups are generally different sets of training_hours (high vs low) and different sets of experience (again, high vs low).
 
 * Younger and less educated with high ADHD and MD scores
 * Older and more educated with lower ADHD and MD scores
-
-We're curious if the massive increase in the optimal number of clusters was caused by the addition of a single variable or the addition of a binary variable. The best way to tell would be to replace the binary suicide variable with another continuous variable, but we already used all of the provided continuous variables. We could always remove one of our original variables and retain the binary suicide variable, but even this would cause some level of distortion.
 
 ---  
 
