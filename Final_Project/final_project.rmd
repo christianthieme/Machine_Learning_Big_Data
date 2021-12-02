@@ -34,6 +34,8 @@ library(rpart)
 library(randomForest)
 library(MASS)
 library(FNN)
+library(themis)
+library(vip)
 ```
 
 
@@ -276,7 +278,7 @@ We can see above that ~8% of our dataset is missing, with the largest contributo
 
 ```{r}
 train <- train %>%
-  dplyr::select(-company_type, -company_size, -gender, -major_discipline)
+  dplyr::select(-company_type, -company_size, -gender, -major_discipline, -enrollee_id)
 ```
 
 Having dropped these variables, lets look again at our missing values: 
@@ -437,50 +439,131 @@ Having concluded our exploratory data analysis, we'll now build several models t
 
 A decision tree is a supervised machine learning algorithm that can be used for both classification and regression problems. A decision tree is simply a series of sequential decisions made to reach a specific result.
 
-```{r, message=F, warning=FALSE}
-# features <- c('Gender', 'Married', 'Dependents', 'Education', 'ApplicantIncome',
-#               'CoapplicantIncome', 'LoanAmount', 'Loan_Amount_Term', 'Credit_History',
-#               'Property_Area', 'Self_Employed')
-# dt <- rpart(Loan_Status~., data=train.data %>% dplyr::select(c(all_of(features), Loan_Status)), method = "class")
-# dt
+```{r}
+library(tidymodels)
+set.seed(42)
+df_split <- train %>% initial_split(strata = 'target')
+
+df_train <- training(df_split)
+df_test <- testing(df_split)
+
+set.seed(43)
+df_folds <- bootstraps(df_train, strata = target, times=10)
 ```
 
-Running our data through a decision tree approves 70% of the loans and denies 30%.
-
-```{r message=FALSE, warning=FALSE}
-# rpart.plot(dt)
-```
-
-From the plot above we can see that having no credit history is a major factor in determining if the loan will be approved or not, followed by marriage, income and dependents. Upon closer examination, having a good credit history and being married gives the highest chance of being approved.
-
+The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to overfit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accuracte. To adjust for imbalance we downsample the target so it's 50-50.
 
 ```{r}
-# dt.predictions <- predict(dt, test.data, type='class')
-# confusionMatrix(table(dt.predictions, test.data$Loan_Status), positive='Y')
+df_train_rec <- recipe(target ~ ., data=df_train) %>%
+  themis::step_downsample(target)
+
+smp <- df_train_rec %>% prep() %>% bake(new_data=NULL)
+table(smp$target)
 ```
 
-The confusion matrix shows we correctly predicted Yes 59 times and No 14 times for an overall accuracy of 76.84%. Our model has higher precision than recall. This means that our model is better at predicting if someone qualifies for a loan than predicting if someone should be denied a loan.  
+We instantiate the decision tree and fit it with the training set
 
----
+```{r, message=F, warning=FALSE}
+dt <- rpart(target~., data=df_train)
+dt
+```
+
+The trained model is then used on the test set to evaluate it's performance.
+
+```{r}
+dt.predictions <- predict(dt, df_test, type='class')
+dt_df = data.frame(y_true=df_test$target, y_pred=dt.predictions)
+dt_cm <- confusionMatrix(table(dt_df$y_true, dt_df$y_pred), positive='1')
+dt_cm
+tn <- dt_cm$table[1]
+tp <- dt_cm$table[4]
+fn <- dt_cm$table[3]
+fp <- dt_cm$table[2]
+
+fourfoldplot(dt_cm$table)
+```
+
+The confusion matrix shows we correctly predicted No `r tn` times and Yes `r tp` times for an overall accuracy of 77.54%. Our model has higher recall and precision. This means that our model is better at predicting if someone is not looking for a job.
 
 ### Random Forest    
 
 The decision tree algorithm is quite easy to understand and interpret. However, often a single tree is not sufficient for producing effective results. This is where the Random Forest algorithm comes into the picture.  
 
-We'll build a random forest model with 500 trees.
-
-```{r message=FALSE, warning=FALSE}
-# rf <- randomForest(Loan_Status~., data=train.data %>% dplyr::select(c(all_of(features), Loan_Status)), method = "class")
-# rf
-```
-
+We'll build a random forest model with 1500 trees where mtry and min_n as tunable parameters.
 
 ```{r}
-# rf.predictions <- predict(rf, test.data, type='class')
-# confusionMatrix(table(rf.predictions, test.data$Loan_Status), positive='Y')
+rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees=100) %>%
+  set_mode('classification') %>%
+  set_engine('ranger')
+
+rf_workflow <- workflow() %>%
+  add_recipe(df_train_rec) %>%
+  add_model(rf_spec)
 ```
 
-The confusion matrix shows we correctly predicted Yes 58 times and No 15 times. Our model has higher recall than precision. This means that our model is more accurate at predicting those who do not qualify for a loan than those who do. 
+The random forest is tuned through a grid with parallel processing
+
+```{r}
+set.seed(42)
+doParallel::registerDoParallel()
+rf_tune <- tune_grid(rf_workflow, resamples = df_folds, grid=30)
+```
+
+With the model tuned we can
+
+```{r}
+show_best(rf_tune, metric='roc_auc')
+autoplot(rf_tune)
+```
+
+Selecting the best parameters we train the full model on the trainined set
+
+```{r}
+rf_model <- rf_workflow %>%
+  finalize_workflow(select_best(rf_tune, metric='roc_auc'))
+```
+
+When the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
+
+#### Testing
+
+```{r}
+rf_fit <- last_fit(rf_model, df_split)
+metrics <- collect_metrics(rf_fit)
+metrics
+roc_auc <- (metrics %>% filter(.metric == 'roc_auc'))$.estimate
+```
+
+Our model has an roc_auc of `r roc_auc` on the test set which is a about the same on the training set.
+
+Feature importance
+
+```{r}
+imp_spec <- rf_spec %>%
+  finalize_model(select_best(rf_tune, metric='roc_auc')) %>%
+  set_engine('ranger', importance='permutation')
+
+workflow() %>%
+  add_recipe(df_train_rec) %>%
+  add_model(imp_spec) %>%
+  fit(df_test) %>%
+  extract_fit_parsnip() %>%
+  vip() + 
+  labs(y='Importance', x='Features')
+```
+
+The most important feature is city_development_index by a wide margin. Next is the city and relevant experience followed by university and base experience.
+
+```{r}
+model <- rf_fit$.workflow[[1]]
+y_pred <- predict(model, df_test)
+rf_df <- data.frame(y_pred=y_pred$.pred_class, y_true=df_test$target)
+rf_cm <- confusionMatrix(table(rf_df$y_true, rf_df$y_pred), positive='1')
+rf_cm
+fourfoldplot(rf_cm$table)
+```
+
+The confusion matrix shows we correctly predicted someone is not looking for a job 2761 times and someone is looking for a job 747 times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value). This means that our model is more accurate at predicting those who do not qualify for a loan than those who do. 
 
 
 ---
