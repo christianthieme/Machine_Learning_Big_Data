@@ -348,7 +348,7 @@ Now we can visualize our clusters! To visualize these four dimensional clusters,
 ```{r}
 library(factoextra)
 
-km.res <- kmeans(kmeans_trans, centers = 2, nstart = 50)
+km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
@@ -380,50 +380,6 @@ By looking at these two clusters, we can see that one of our clusters has a high
 
 * Younger and less educated with high ADHD and MD scores
 * Older and more educated with lower ADHD and MD scores
-
-Out of curiosity, we wanted to add back in a single binary variable, `suicide`, since we knew we would be investigating it later. We knew k-means would struggle with this, but we were curious to see how much it would impact the outcome.
-
-We went through the same steps as before, but this time included suicide as our first variable.
-
-```{r}
-# library(tidyverse)
-# library(caret)
-# library(factoextra)
-# adhd_km <- adhd %>%
-#   select(suicide, age, md_total, education, adhd_total)
-# adhd_km <- adhd_km %>%
-#   mutate_if(is.factor, as.character) %>%
-#   mutate_if(is.character, as.numeric)
-# adhd_km_trans <- preProcess(adhd_km,
-#                             method = c("center", "scale", "BoxCox"))
-# adhd_km_trans <- predict(adhd_km_trans, adhd_km)
-# fviz_nbclust(adhd_km_trans, kmeans, method = "silhouette", k.max = 20)
-# km.res <- kmeans(adhd_km_trans, centers = 12, nstart = 50)
-# fviz_cluster(km.res, adhd_km_trans)
-# adhd_km_res <- cbind(adhd_km, km.res$cluster)
-# km_comparison <- adhd_km_res %>%
-#   group_by(km.res$cluster) %>%
-#   rename(cluster = `km.res$cluster`) %>%
-#   summarise_all(mean) %>%
-#   pivot_longer(c("suicide":"adhd_total"),
-#                names_to = "category",
-#                values_to = "mean")
-# ggplot(km_comparison,
-#        aes(x = as.factor(cluster),
-#            y = mean,
-#            fill = as.factor(category))) +
-#   geom_bar(position = "dodge",
-#            stat = "identity") +
-#   scale_fill_brewer(palette = "Set3") +
-#   labs(x = "Cluster",
-#        y = "Value",
-#        fill = "Factor")
-```
-
-Adding in just one binary variable - suicide - had a massive impact on our clustering. The optimal number of clusters increased by 600% all the way up to 12 clusters. All of a sudden we have clusters that fit a bunch of different scenarios. Based on our clusters, we ended up with the following conclusions:
-
-* We had 4 groups that had non-zero means for suicide (meaning suicide was attempted)
-* Of these 4 groups, 3 had higher ADHD scores, 1 was an older group and 1 was a younger group, and education for all 4 groups was low.
 
 We're curious if the massive increase in the optimal number of clusters was caused by the addition of a single variable or the addition of a binary variable. The best way to tell would be to replace the binary suicide variable with another continuous variable, but we already used all of the provided continuous variables. We could always remove one of our original variables and retain the binary suicide variable, but even this would cause some level of distortion.
 
