@@ -608,8 +608,10 @@ kknn_func <- function(train_x, train_y, test_x, test_y){
                 "biweight","triweight")
   
   for(d in 1:10){
+    print(d)
     for(w in weights){
-      for(i in 2:50){
+      print(w)
+      for(i in 2:10){
         kknnModel <- kknn(train_y ~ .,
                           train_x,
                           test_x,
@@ -655,51 +657,51 @@ To validate these results, we'll randomize our training and testing sets one mor
 
 ```{r warning=FALSE}
 
-# set.seed(12345)
-# train_ind <- sample(seq_len(nrow(knn_processed)),
-#                     size = floor(0.75*nrow(knn_processed)))
-# knn_train <- knn_processed[train_ind,]
-# knn_test <- knn_processed[-train_ind,]
-# kknn_func <- function(train_x, train_y, test_x, test_y){
-#   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
-#   
-#   weights <- c("rectangular","triangular",
-#                "biweight","triweight")
-#   
-#   for(d in 1:10){
-#     for(w in weights){
-#       for(i in 2:50){
-#         kknnModel <- kknn(train_y ~ .,
-#                           train_x,
-#                           test_x,
-#                           k = i,
-#                           distance = d,
-#                           kernel = w)
-#         
-#         cM <- table(test_y, fitted(kknnModel))
-#         accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-#         acc_df <- rbind(acc_df,c(i,accuracy,w,d))
-#       }
-#     }
-#   }
-#   colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
-#   acc_df[,1] <- as.integer(acc_df[,1])
-#   acc_df[,2] <- as.numeric(acc_df[,2])
-#   acc_df[,4] <- as.integer(acc_df[,4])
-#   return(acc_df)
-# }
-# kknn_acc <- kknn_func(knn_train[,-1],
-#                       knn_train[,1],
-#                       knn_test[,-1],
-#                       knn_test[,1])
-# head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
-# acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
-# ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
-#   geom_line() +
-#   geom_point() +
-#   labs(title = "KKNN: k distribution",
-#        x = "k",
-#        y = "Accuracy")
+set.seed(12345)
+train_ind <- sample(seq_len(nrow(knn_processed)),
+                    size = floor(0.75*nrow(knn_processed)))
+knn_train <- knn_processed[train_ind,]
+knn_test <- knn_processed[-train_ind,]
+kknn_func <- function(train_x, train_y, test_x, test_y){
+  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
+
+  weights <- c("rectangular","triangular",
+               "biweight","triweight")
+
+  for(d in 1:10){
+    for(w in weights){
+      for(i in 2:50){
+        kknnModel <- kknn(train_y ~ .,
+                          train_x,
+                          test_x,
+                          k = i,
+                          distance = d,
+                          kernel = w)
+
+        cM <- table(test_y, fitted(kknnModel))
+        accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
+        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
+      }
+    }
+  }
+  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
+  acc_df[,1] <- as.integer(acc_df[,1])
+  acc_df[,2] <- as.numeric(acc_df[,2])
+  acc_df[,4] <- as.integer(acc_df[,4])
+  return(acc_df)
+}
+kknn_acc <- kknn_func(knn_train[,-1],
+                      knn_train[,1],
+                      knn_test[,-1],
+                      knn_test[,1])
+head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
+acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
+ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "KKNN: k distribution",
+       x = "k",
+       y = "Accuracy")
 ```
 
 After tuning our hyper parameters again, we arrived at a similar result: a k value of around 9 and a rectangular weighting provided us with the best version of a KNN model.
