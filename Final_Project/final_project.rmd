@@ -559,18 +559,27 @@ The confusion matrix shows we correctly predicted someone is not looking for a j
 
 ### KNN
 
-KNN requires that there is no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already omitted these observations for LDA, we'll continue with that method here.
+KNN requires that there is no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already imputed these observations during our EDA, we'll continue with that method here.
 
-Following the required omission of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
+Following the required imputation of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
 ```{r}
-# 
-# knn_features <- subset(loans2, select=-c(Loan_Status))
-# knn_trans <- preProcess(knn_features,
-#                         method = c("center", "scale"))
-# knn_transformed_feat <- predict(knn_trans, knn_features)
-# nzv <- nearZeroVar(knn_transformed_feat, saveMetrics = TRUE)
-# nzv[nzv[,"nzv"] == TRUE,]
+library(caret)
+
+knn_data <- train %>%
+  dplyr::select(city_development_index, training_hours, experience, last_new_job) %>%
+  mutate_if(is.factor, as.character) %>%
+  mutate(experience = replace(experience, experience == ">20", 20)) %>%
+  mutate(experience = replace(experience, experience == "<1", 0)) %>%
+  mutate(last_new_job = replace(last_new_job, last_new_job == ">4", 4)) %>%
+  mutate(last_new_job = replace(last_new_job, last_new_job == "never", 0)) %>%
+  mutate_if(is.character, as.numeric)
+
+knn_trans <- preProcess(knn_data,
+                        method = c("center", "scale"))
+knn_transformed_feat <- predict(knn_trans, knn_data)
+nzv <- nearZeroVar(knn_transformed_feat, saveMetrics = TRUE)
+nzv[nzv[,"nzv"] == TRUE,]
 ```
 
 It turns out that none of our predictors have near-zero variance, so we're good to proceed!
@@ -578,61 +587,65 @@ It turns out that none of our predictors have near-zero variance, so we're good 
 At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove Loan_ID since it will throw off our KNN model.
 
 ```{r}
-# knn_processed <- cbind(loans2[,13], knn_transformed_feat)
-# knn_processed <- subset(knn_processed, select=-c(Loan_ID))
-# names(knn_processed)[1] <- ("Loan_Status")
-# knn_processed <- knn_processed[complete.cases(knn_processed),]
-# set.seed(54321)
-# train_ind <- sample(seq_len(nrow(knn_processed)),
-#                     size = floor(0.75*nrow(knn_processed)))
-# knn_train <- knn_processed[train_ind,]
-# knn_test <- knn_processed[-train_ind,]
+knn_processed <- cbind(train[9], knn_transformed_feat)
+knn_processed <- knn_processed[complete.cases(knn_processed),]
+set.seed(54321)
+train_ind <- sample(seq_len(nrow(knn_processed)),
+                    size = floor(0.75*nrow(knn_processed)))
+knn_train <- knn_processed[train_ind,]
+knn_test <- knn_processed[-train_ind,]
 ```
 
 Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). 
 
 ```{r warning=FALSE}
+library(kknn)
 
-# kknn_func <- function(train_x, train_y, test_x, test_y){
-#   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
-#   
-#   weights <- c("rectangular","triangular",
-#                "biweight","triweight")
-#   
-#   for(d in 1:10){
-#     for(w in weights){
-#       for(i in 2:50){
-#         kknnModel <- kknn(train_y ~ .,
-#                           train_x,
-#                           test_x,
-#                           k = i,
-#                           distance = d,
-#                           kernel = w)
-#         
-#         cM <- table(test_y, fitted(kknnModel))
-#         accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-#         acc_df <- rbind(acc_df,c(i,accuracy,w,d))
-#       }
-#     }
-#   }
-#   colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
-#   acc_df[,1] <- as.integer(acc_df[,1])
-#   acc_df[,2] <- as.numeric(acc_df[,2])
-#   acc_df[,4] <- as.integer(acc_df[,4])
-#   return(acc_df)
-# }
-# kknn_acc <- kknn_func(knn_train[,-1],
-#                       knn_train[,1],
-#                       knn_test[,-1],
-#                       knn_test[,1])
-# head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
-# acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
-# ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
-#   geom_line() +
-#   geom_point() +
-#   labs(title = "KKNN: k distribution",
-#        x = "k",
-#        y = "Accuracy")
+kknn_func <- function(train_x, train_y, test_x, test_y){
+  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
+  
+  weights <- c("rectangular","triangular",
+                "biweight","triweight")
+  
+  for(d in 1:10){
+    for(w in weights){
+      for(i in 2:50){
+        kknnModel <- kknn(train_y ~ .,
+                          train_x,
+                          test_x,
+                          k = i,
+                          distance = d,
+                          kernel = w)
+        
+        cM <- table(test_y, fitted(kknnModel))
+        accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
+        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
+      }
+    }
+  }
+
+  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
+  acc_df[,1] <- as.integer(acc_df[,1])
+  acc_df[,2] <- as.numeric(acc_df[,2])
+  acc_df[,4] <- as.integer(acc_df[,4])
+  
+  return(acc_df)
+}
+
+kknn_acc <- kknn_func(knn_train[,-1],
+                      knn_train[,1],
+                      knn_test[,-1],
+                      knn_test[,1])
+
+head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
+acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
+
+ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "KKNN: k distribution",
+       x = "k",
+       y = "Accuracy")
 ```
 
 
