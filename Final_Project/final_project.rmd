@@ -604,14 +604,13 @@ library(kknn)
 kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
   
-  weights <- c("rectangular","triangular",
-                "biweight","triweight")
+  weights <- c("rectangular","triangular")
   
   for(d in 1:10){
     print(d)
     for(w in weights){
       print(w)
-      for(i in 2:10){
+      for(i in 2:30){
         kknnModel <- kknn(train_y ~ .,
                           train_x,
                           test_x,
@@ -642,7 +641,7 @@ kknn_acc <- kknn_func(knn_train[,-1],
 head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
 acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
 
-ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
+ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
   labs(title = "KKNN: k distribution",
@@ -656,21 +655,24 @@ From the visual above, we can see that our model found that a k value of around 
 To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
 
 ```{r warning=FALSE}
+library(kknn)
 
 set.seed(12345)
 train_ind <- sample(seq_len(nrow(knn_processed)),
                     size = floor(0.75*nrow(knn_processed)))
 knn_train <- knn_processed[train_ind,]
 knn_test <- knn_processed[-train_ind,]
+
 kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
 
-  weights <- c("rectangular","triangular",
-               "biweight","triweight")
+  weights <- c("rectangular","triangular")
 
   for(d in 1:10){
+    print(d)
     for(w in weights){
-      for(i in 2:50){
+      print(w)
+      for(i in 2:5=30){
         kknnModel <- kknn(train_y ~ .,
                           train_x,
                           test_x,
@@ -690,13 +692,17 @@ kknn_func <- function(train_x, train_y, test_x, test_y){
   acc_df[,4] <- as.integer(acc_df[,4])
   return(acc_df)
 }
+
 kknn_acc <- kknn_func(knn_train[,-1],
                       knn_train[,1],
                       knn_test[,-1],
                       knn_test[,1])
+
 head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
+
 acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
-ggplot(data = acc_plot_data, aes(x = k, y = Accuracy, color = Weight)) +
+
+ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
   labs(title = "KKNN: k distribution",
