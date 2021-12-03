@@ -376,11 +376,39 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-These 8 groups are generally different sets of training_hours (high vs low) and different sets of experience (again, high vs low).
+These 8 groups are generally different combinations of training_hours (high vs low) and different sets of experience (again, high vs low). This visualization makes it difficult to compare some of the smaller values, such as city_development_index and last_new_job, so let's create a new visualization for them.
 
-* Younger and less educated with high ADHD and MD scores
-* Older and more educated with lower ADHD and MD scores
+```{r}
+km_city <- km_comparison %>%
+  filter(category == "city_development_index")
 
+ggplot(km_city,
+       aes(x = as.factor(cluster),
+           y = mean,
+           fill = as.factor(category))) +
+  geom_bar(position = "dodge",
+           stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(x = "Cluster",
+       y = "Value",
+       fill = "Factor")
+
+km_job <- km_comparison %>%
+  filter(category == "last_new_job")
+
+ggplot(km_job,
+       aes(x = as.factor(cluster),
+           y = mean,
+           fill = as.factor(category))) +
+  geom_bar(position = "dodge",
+           stat = "identity") +
+  scale_fill_brewer(palette = "Set3") +
+  labs(x = "Cluster",
+       y = "Value",
+       fill = "Factor")
+```
+
+These extra visualizations make it clear that the groupings also include a variation in the city_development_index and the last_new_job category.
 ---  
 
 
