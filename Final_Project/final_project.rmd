@@ -316,7 +316,7 @@ The first step was to pull out only the columns we wanted to use. Since k-means 
 ```{r}
 library(tidyverse)
 
-kmeans <- train %>%
+kmeans_df <- train %>%
   dplyr::select(city_development_index, training_hours, experience, last_new_job) %>%
   mutate_if(is.factor, as.character) %>%
   mutate(experience = replace(experience, experience == ">20", 20)) %>%
@@ -331,17 +331,23 @@ The next step was to transform the data. Again, the euclidean based distance mea
 ```{r}
 library(caret)
 
-kmeans_trans <- preProcess(kmeans,
+kmeans_trans <- preProcess(kmeans_df,
                            method = c("center", "scale", "BoxCox"))
-kmeans_trans <- predict(kmeans_trans, kmeans)
+kmeans_trans <- predict(kmeans_trans, kmeans_df)
 ```
 
-Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
+Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 3 clusters.
 
 ```{r}
+<<<<<<< HEAD
+library(factoextra)
+
+fviz_nbclust(kmeans_trans, kmeans, method = "wss", k.max = 20)
+=======
 # library(factoextra)
 # 
 # factoextra::fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
+>>>>>>> da1de191cefd2e521e5440571538b7e17a63f117
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
@@ -349,16 +355,30 @@ Now we can visualize our clusters! To visualize these four dimensional clusters,
 ```{r}
 library(factoextra)
 
-km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
+km.res <- kmeans(kmeans_trans, centers = 3, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
-What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly. Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
+What incredible clusters! To get a sense of our clusters, we first performed computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA.
+
+Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
+
+```{r}
+library("FactoMineR")
+
+pca.res <- PCA(kmeans_df, graph = FALSE)
+
+fviz_pca_var(pca.res, col.var="contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+
+In an effort to get a better sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
 
 ```{r}
 library(tidyverse)
-km_res <- cbind(kmeans, km.res$cluster)
-km_comparison <- km_res %>%
+km_comparison <- cbind(kmeans_df, km.res$cluster)
+km_comparison <- km_comparison %>%
   group_by(km.res$cluster) %>%
   rename(cluster = `km.res$cluster`) %>%
   summarise_all(mean) %>%
@@ -410,6 +430,7 @@ ggplot(km_job,
 ```
 
 These extra visualizations make it clear that the groupings also include a variation in the city_development_index and the last_new_job category.
+
 ---  
 
 
