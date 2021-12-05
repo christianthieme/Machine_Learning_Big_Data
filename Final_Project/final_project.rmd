@@ -655,8 +655,6 @@ ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
 
 From the visual above, we can see that our model found that a k value of around 27 with a distance of 2 and a weighting function of rectangular produced the best model with an accuracy of 77.2%.
 
-To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
-
 ---
 
 
