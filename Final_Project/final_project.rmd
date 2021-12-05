@@ -341,7 +341,7 @@ Now that we have our data set up, we can get a sense of how many clusters to cre
 ```{r}
 library(factoextra)
 
-fviz_nbclust(kmeans_trans, kmeans, method = "wss", k.max = 20)
+fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
@@ -353,7 +353,7 @@ km.res <- kmeans(kmeans_trans, centers = 3, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
-What incredible clusters! To get a sense of our clusters, we first performed computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA.
+What incredible clusters! To get a sense of our clusters, we first performed computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA. We can see that dimension 2 is essentially completely comprised of training_hours and that dimension 1 is a combination of the rest of the variables.
 
 Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
 
@@ -391,39 +391,11 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-These 3 groups are generally different combinations of training_hours (high vs low) and different sets of experience (again, high vs low). This visualization makes it difficult to compare some of the smaller values, such as city_development_index and last_new_job, so let's create a new visualization for them.
+These 3 groups are generally different combinations of experience (high vs low) and last_new_job (high vs low). Our 3 groups look like:  
 
-```{r}
-km_city <- km_comparison %>%
-  filter(category == "city_development_index")
-
-ggplot(km_city,
-       aes(x = as.factor(cluster),
-           y = mean,
-           fill = as.factor(category))) +
-  geom_bar(position = "dodge",
-           stat = "identity") +
-  scale_fill_brewer(palette = "Set3") +
-  labs(x = "Cluster",
-       y = "Value",
-       fill = "Factor")
-
-km_job <- km_comparison %>%
-  filter(category == "last_new_job")
-
-ggplot(km_job,
-       aes(x = as.factor(cluster),
-           y = mean,
-           fill = as.factor(category))) +
-  geom_bar(position = "dodge",
-           stat = "identity") +
-  scale_fill_brewer(palette = "Set3") +
-  labs(x = "Cluster",
-       y = "Value",
-       fill = "Factor")
-```
-
-These extra visualizations make it clear that the groupings also include a variation in the city_development_index and the last_new_job category.
+* lots of experience and a long time since the last job switch  
+* medium experience and a short time since last job switch  
+* little experience and a short time since last job switch  
 
 ---  
 
