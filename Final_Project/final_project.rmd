@@ -36,6 +36,7 @@ library(MASS)
 library(FNN)
 library(themis)
 library(vip)
+library(ranger)
 ```
 
 
@@ -337,10 +338,10 @@ kmeans_trans <- predict(kmeans_trans, kmeans)
 
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
 
-```{r eval=FALSE, include=FALSE}
+```{r}
 library(factoextra)
 
-factoextra::fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
+fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
@@ -349,7 +350,7 @@ Now we can visualize our clusters! To visualize these four dimensional clusters,
 library(factoextra)
 
 km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
-factoextra::fviz_cluster(km.res, kmeans_trans)
+fviz_cluster(km.res, kmeans_trans)
 ```
 
 What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly. Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
@@ -493,7 +494,7 @@ rf_workflow <- workflow() %>%
 The random forest is tuned through a grid with parallel processing
 
 ```{r}
-#set.seed(42)
+set.seed(42)
 doParallel::registerDoParallel()
 rf_tune <- tune_grid(rf_workflow, resamples = df_folds, grid=30)
 ```
@@ -654,7 +655,7 @@ From the visual above, we can see that our model found that a k value of around 
 
 To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
 
-```{r eval=FALSE, warning=FALSE, include=FALSE}
+```{r warning=FALSE}
 library(kknn)
 
 set.seed(12345)
@@ -718,122 +719,112 @@ After tuning our hyper parameters again, we arrived at a similar result: a k val
 
 ### Gradient Boosting
 
-We begin by dropping the `Initial` column as it doesn't hold any predictive information. The data is then split into training and testing sets: 
 
-```{r}
-# set.seed(777)
-# df_split = initial_split(adhd %>% select(-c(initial)), strata=suicide)
-# df_train <- training(df_split)
-# df_test <- testing(df_split)
-```
-
-Gradient boosting machines are similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, they are grown sequentially on transformations of the data. Boosting is a method to improve (boost) the weak learners sequentially and increase the model accuracy with a combined model.
+Gradient boosting is similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, they are grown sequentially on transformations of the data. Boosting is a method to improve the weak learners sequentially and increase the model accuracy with a combined model.
 
 
-Unlike random forests, GBMs can have high variability in accuracy dependent on their hyperparameter settings.
+Unlike random forests, GBMs can have high variability in accuracy depending on their settings.
 
-Boosting has 5 tuning parameters that we can focus on:
+Boosting has 4 tuning parameters that we can focus on:
 
 * The number of trees. 
 
-* The shrinkage parameter λ (eta in the params), a small positive number. This controls the rate at which boosting learns.
-
 * The number of splits in each tree, which controls the complexity of the boosted ensemble (controlled with max.depth).
 
-* The interaction depth, number of splits it has to perform on a tree.
+* Interaction depth, the number of splits it has to perform on a tree.
 
 * The distribution type. We will use “adaboost”, as we are working with 0-1 outcomes.
 
-We will tune the model with the training set to find the best combination with lowest RMSE error. 
+We will tune the model with the training set to find the best combination with the lowest RMSE error. 
+
 
 ```{r, message=FALSE}
 # search grid
-# hyper_grid <- expand.grid(
-#   n.trees = c(1000,3000),
-#   shrinkage = c(0.01, 0.05),
-#   interaction.depth = c(3, 5, 7),
-#   n.minobsinnode = c(5, 10, 15)
-# )
-# 
-# # create model fit function
-# model_fit <- function(n.trees, shrinkage, interaction.depth, n.minobsinnode) {
-#   set.seed(777)
-#   m <- gbm(
-#     formula = as.character(suicide) ~ .,
-#     data = data.frame(df_train),
-#     distribution = "adaboost",
-#     n.trees = n.trees,
-#     shrinkage = shrinkage,
-#     interaction.depth = interaction.depth,
-#     n.minobsinnode = n.minobsinnode,
-#     cv.folds = 10
-#   )
-#   # compute RMSE
-#   sqrt(min(m$cv.error))
-# }
-# 
-# 
-# hyper_grid$rmse <- purrr::pmap_dbl(
-#   hyper_grid,
-#   ~ model_fit(
-#     n.trees = ..1,
-#     shrinkage = ..2,
-#     interaction.depth = ..3,
-#     n.minobsinnode = ..4
-#   )
-# )
-# 
-# # results
-# arrange(hyper_grid, rmse)
+ hyper_grid <- expand.grid(
+   n.trees = c(100, 500),
+   interaction.depth = c(6, 9),
+   n.minobsinnode = c(5, 10)
+ )
+ 
+ # create model fit function
+ model_fit <- function(n.trees, shrinkage, interaction.depth, n.minobsinnode) {
+   set.seed(777)
+   m <- gbm(
+     formula = as.character(target) ~ .,
+     data = data.frame(df_train),
+    distribution = "adaboost",
+     n.trees = n.trees,
+    shrinkage = 0.05,
+     interaction.depth = interaction.depth,
+     n.minobsinnode = n.minobsinnode,
+     cv.folds = 10
+   )
+   # compute RMSE
+   sqrt(min(m$cv.error))
+ }
+
+ 
+ hyper_grid$rmse <- purrr::pmap_dbl(
+   hyper_grid,
+   ~ model_fit(
+     n.trees = ..1,
+     interaction.depth = ..2,
+     n.minobsinnode = ..3
+   )
+ )
+ 
+ # results
+arrange(hyper_grid, rmse)
+
 ```
 
-We experienced no improvement in our RMSE after we tried to reduce/increase the number of trees.
+We experienced no improvement in our RMSE after we tried to increase the number of trees and interaction depth, however it significantly affected the processing time.
 
 From the results above, we see the optimal hyperparameters are:
 
-* the number of trees to 1000
+* the number of trees to 100
 
-* interaction depth to 3
+* interaction depth to 9
 
-* shrinkage to 0.01
-
-* n.minobsinnode to 15
+* n.minobsinnode to 10
 
 We will use these values to build the model for our test set. 
 
+
 ```{r, message=FALSE}
-# set.seed(777)
-# modelGBM=gbm(as.character(suicide)~., data=data.frame(df_train)
-#              ,n.trees=1000,distribution='adaboost',interaction.depth=3,shrinkage=0.01, n.minobsinnode = 15)
-# 
-# print(modelGBM)
+set.seed(777)
+ modelGBM=gbm(as.character(target)~., data=data.frame(df_train)
+             ,n.trees=100,distribution='adaboost',interaction.depth=9,shrinkage=0.05, n.minobsinnode = 10)
+
+print(modelGBM)
 ```
 
 
 ```{r, message=FALSE}
-# pgbm=predict(modelGBM,newdata=data.frame(df_test),n.trees = 1000,type='response')
-# pgbm[pgbm>0.5]=1
-# pgbm[pgbm<=0.5]=0
-
+set.seed(777)
+pgbm=predict(modelGBM,newdata=data.frame(df_test),n.trees = 100,type='response')
+pgbm[pgbm>0.5]=1
+pgbm[pgbm<=0.5]=0
 ```
 
 ```{r, message=FALSE}
-# confusionMatrix(as.factor(df_test$suicide),as.factor(pgbm), positive='1')
+confusionMatrix(as.factor(df_test$target),as.factor(pgbm), positive='1')
 ```
 
 
-Above, we can see the accuracy metrics for our final model. It appears that Boosting has a correct classification rate of 65% and a sensitivity of 33%. Obviously with these results, we would not recommend using this model. While we can with some accuracy predict who will not attempt to commit suicide, the model is very bad at predicting who would attempt to commit suicide. However, we'll use these results as a benchmark as we move forward to the SVM method.
+Above, we can see the accuracy metrics for our final gradient boosting model. It appears that Boosting has a correct classification rate of 77.83% and a sensitivity of 58.34%.
 
-As a point of interest, we can use the `summary` function on our final model object to give us a variable importance plot. Not surprisingly, `adhd_total`and `md_total` are the most important variables in the model.
+As a point of interest, we can use the `summary` function on our final model object to give us a variable importance plot. Not surprisingly, `city`and `experience` are the most important variables in the model.
 
 ```{r}
-# summary(modelGBM,
-#         cBars = 10,
-#         n.trees = modelGBM$n.trees,
-#         plotit = TRUE,
-#         order = TRUE,
-#         method = relative.influence,
-#         normalize = TRUE)
+ summary(modelGBM,
+        cBars = 10,
+       n.trees = modelGBM$n.trees,
+         plotit = TRUE,
+         order = TRUE,
+        method = relative.influence,
+         normalize = TRUE)
+
 ```
 
 
@@ -913,7 +904,7 @@ Detailed results of the individual models are given above, however, a comparison
 | Decision Tree  |     65.0%  |    70.5%    |   33.3%     | 
 | Random Forest  |     65.0%  |    70.5%    |   33.3%     | 
 | KNN            |     65.0%  |    70.5%    |   33.3%     | 
-| Gradient Boost |     65.0%  |    70.5%    |   33.3%     |          
+| Gradient Boost |     77.8%  |    81.7%    |   58.3%     |        
 | SVM            |     72.0%  |    86.1%    |   45.7%     |  
 
 
