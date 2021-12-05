@@ -339,15 +339,9 @@ kmeans_trans <- predict(kmeans_trans, kmeans_df)
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 3 clusters.
 
 ```{r}
-<<<<<<< HEAD
 library(factoextra)
 
 fviz_nbclust(kmeans_trans, kmeans, method = "wss", k.max = 20)
-=======
-# library(factoextra)
-# 
-# factoextra::fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
->>>>>>> da1de191cefd2e521e5440571538b7e17a63f117
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
