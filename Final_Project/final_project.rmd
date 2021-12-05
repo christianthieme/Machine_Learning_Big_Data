@@ -309,7 +309,7 @@ As a conclusion to our exploratory data analysis, we determined it appropriate t
 
 #### K-Means Clustering
 
-K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters). We ultimately chose to use k-means instead of hierarchical clustering due to there being no real reason to believe this data has a hierarchical structure to it.
+K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters).
 
 The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors.
 
@@ -339,9 +339,9 @@ kmeans_trans <- predict(kmeans_trans, kmeans)
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
 
 ```{r}
-library(factoextra)
-
-fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
+# library(factoextra)
+# 
+# factoextra::fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
@@ -441,13 +441,15 @@ set.seed(43)
 df_folds <- bootstraps(df_train, strata = target, times=10)
 ```
 
-The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to overfit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accuracte. To adjust for imbalance we downsample the target so it's 50-50.
+The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to overfit on the class that is over represented. Stated differently, if our model only guessed the target 0 it would be 75% accurate. To adjust for imbalance we downsample the target so it's 50-50.
 
 ```{r}
 df_train_rec <- recipe(target ~ ., data=df_train) %>%
   themis::step_downsample(target)
 
-smp <- df_train_rec %>% prep() %>% bake(new_data=NULL)
+smp <- df_train_rec %>% 
+  prep() %>% 
+  bake(new_data=NULL)
 table(smp$target)
 ```
 
@@ -506,14 +508,14 @@ show_best(rf_tune, metric='roc_auc')
 autoplot(rf_tune)
 ```
 
-Selecting the best parameters we train the full model on the trainined set
+Selecting the best parameters we train the full model on the trained set:
 
 ```{r}
 rf_model <- rf_workflow %>%
   finalize_workflow(select_best(rf_tune, metric='roc_auc'))
 ```
 
-When the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
+With the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
 
 #### Testing
 
@@ -553,16 +555,14 @@ rf_cm
 fourfoldplot(rf_cm$table)
 ```
 
-The confusion matrix shows we correctly predicted someone is not looking for a job 2761 times and someone is looking for a job 747 times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value). This means that our model is more accurate at predicting those who do not qualify for a loan than those who do. 
+The confusion matrix shows we correctly predicted someone is not looking for a job 2,761 times and someone is looking for a job 747 times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value). This means that our model is more accurate at predicting those who do not qualify for a loan than those who do. 
 
 
 ---
 
 ### KNN
 
-KNN requires that there is no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already imputed these observations during our EDA, we'll continue with that method here.
-
-Following the required imputation of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
+KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
 ```{r}
 library(caret)
@@ -906,9 +906,6 @@ Detailed results of the individual models are given above, however, a comparison
 | KNN            |     65.0%  |    70.5%    |   33.3%     | 
 | Gradient Boost |     77.8%  |    81.7%    |   58.3%     |        
 | SVM            |     72.0%  |    86.1%    |   45.7%     |  
-
-
-
 
 
 
