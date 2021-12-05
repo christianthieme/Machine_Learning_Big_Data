@@ -337,10 +337,10 @@ kmeans_trans <- predict(kmeans_trans, kmeans)
 
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 library(factoextra)
 
-fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
+factoextra::fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 ```
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
@@ -349,7 +349,7 @@ Now we can visualize our clusters! To visualize these four dimensional clusters,
 library(factoextra)
 
 km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
-fviz_cluster(km.res, kmeans_trans)
+factoextra::fviz_cluster(km.res, kmeans_trans)
 ```
 
 What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly. Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
@@ -493,7 +493,7 @@ rf_workflow <- workflow() %>%
 The random forest is tuned through a grid with parallel processing
 
 ```{r}
-set.seed(42)
+#set.seed(42)
 doParallel::registerDoParallel()
 rf_tune <- tune_grid(rf_workflow, resamples = df_folds, grid=30)
 ```
@@ -654,7 +654,7 @@ From the visual above, we can see that our model found that a k value of around 
 
 To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
 
-```{r warning=FALSE}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 library(kknn)
 
 set.seed(12345)
@@ -840,59 +840,69 @@ As a point of interest, we can use the `summary` function on our final model obj
 
 ### Support Vector Machine
 
-A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
+A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who Not looking for a job change and those that are looking for a job change based on the features we have.
 
-The trained dataset is fit to an SVM
+The trained dataset `smp` is fit to an SVM
 
 ```{r}
-# set.seed(42)
-# svm_model = svm(suicide~., data=df_train, kernel='linear', probability=TRUE)
-# summary(svm_model)
+set.seed(42)
+svm_model = svm(target ~ ., data=smp) 
+summary(svm_model)
 ```
 
-Our base model consists of 71 support vectors where 31 are assigned to label 0 (no suicide) and 40 to label 1 (suicide)
+
+Our base model consists of 4993 support vectors where 2511 are assigned to label 0 (not looking for a job change) and 2482 to label 1 (looking for a job change)
 
 We will tune the SVM with the training set to find the best values for gamma and cost. The tuning process is done with 10 fold cross validation.
 
-```{r}
-# set.seed(42)
-# svm_tune <- tune.svm(suicide~., data = df_train, gamma = 0.25, cost = seq(0.1,1,0.1))
-# summary(svm_tune)
-# svm_best <- svm_tune$best.model
+```{r eval=FALSE, include=FALSE}
+set.seed(42)
+#svm_tune <- tune.svm(target~., data = smp, gamma=c(.25,.5,1), cost = seq(0.1,1,0.1))
+
+x <- subset(smp, select=-target)
+y <- subset(smp, select=target)
+
+svm_tune <- tune(svm, train.x=x, train.y=y,kernel="radial", ranges=list(cost=10^(-1:2), gamma=c(.25,.5,1)))
+
+summary(svm_tune)
+svm_best <- svm_tune$best.model
 ```
 
-It looks like the best parameters are gamma = 0.25 and cost = 0.1.
+It looks like the best parameters are gamma = 0.5 and cost = 1.
 
 ```{r, echo=F}
-# set.seed(42)
-# svm_model = svm(suicide~., data=df_train, cost=0.1, gamma=0.25, kernel='linear', probability=TRUE)
-# summary(svm_model)
-# svm_best <- svm_model
+ set.seed(42)
+ svm_model = svm(target~., data=smp, cost=1, gamma=0.5, kernel='radial', probability=TRUE)
+ summary(svm_model)
+ svm_best <- svm_model
 ```
 
 Now with the best model we can try it against the test set:
 
 ```{r}
-# set.seed(42)
-# 
-# y_test = predict(svm_best, df_test %>% select(-c(suicide)))
-# confusionMatrix(df_test[,'suicide'], y_test, positive='1')
+set.seed(42)
+
+x <-  subset(df_test, select=-target) 
+y <- subset(df_test, select=target) 
+  
+y_test = predict(svm_best, x )
+confusionMatrix(df_test[,'target'], y_test, positive='1')
 ```
 
-Based on the results above, we can see that the model is most accurate at predicting someone who will not commit suicide with 24 true negatives. The largest mistake is 8 false positives, meaning the model predicted that those individuals would attempt suicide when they didn't. There are also 4 false negatives which is a situation where the model predicts those individual won't attempt suicide when they did.
+Based on the results above, we can see that the model is most accurate at predicting someone who will not change job  with 2692 true negatives. The largest mistake is 433 false positives, meaning the model predicted that those individuals would change job when they didn't. There are also 904 false negatives which is a situation where the model predicts those individual will not change job when they did.
 
 ```{r}
-# set.seed(42)
-# pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
-# pred_prob <- attr(pred, 'probabilities')
-# df_prob <- cbind(df_test %>% select(suicide), y_test, pred_prob)
-# names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
-# summary(df_prob)
+set.seed(42)
+pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
+pred_prob <- attr(pred, 'probabilities')
+df_prob <- cbind(y, y_test, pred_prob)
+names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
+summary(df_prob)
+
 ```
 
-The predicted probabilities are inline with our analysis of the training and testing set. From the predicted probabilities the SVM model is more likely to predict that an individual will not commit suicide, true negatives. The sensitivity and specificity further add to this models strength but the low positive predicative value shows it's draw backs. This SVM wouldn't do well in the real world since it will miss the most important cases, the situation where we want to stop someone from attempting suicide.
+The predicted probabilities are inline with our analysis of the training and testing set. From the predicted probabilities the SVM model is more likely to predict that an individual will not change job, true negatives. The sensitivity and specificity further add to this models strength. This SVM may do well in the real world.
 
-There is always a trade off between precision and recall, and depending on the situation, we want to prioritize one over the other. In the case of suicides false positives are fine because that means we put time into stopping someone who wasn't going to commit suicide anyways. However false negatives are the worst, since that would be an individual that isn't given attention and will mostly likely commit suicide.
 
 ### Modeling Comparison
 
@@ -900,11 +910,11 @@ Detailed results of the individual models are given above, however, a comparison
 
 | Model          | Accuracy   | Specificity | Sensitivity |
 |----------------|------------|-------------|-------------|
-| Decision Tree  |     65.0%  |    70.5%   |     33.3%     | 
-| Random Forest  |     65.0%  |    70.5%   |     33.3%     | 
-| KNN            |     65.0%  |    70.5%   |     33.3%     | 
-| Gradient Boost |     65.0%  |    70.5%   |     33.3%     |          
-| SVM            |     65.0%  |    70.5%   |     33.3%     |  
+| Decision Tree  |     65.0%  |    70.5%    |   33.3%     | 
+| Random Forest  |     65.0%  |    70.5%    |   33.3%     | 
+| KNN            |     65.0%  |    70.5%    |   33.3%     | 
+| Gradient Boost |     65.0%  |    70.5%    |   33.3%     |          
+| SVM            |     72.0%  |    86.1%    |   45.7%     |  
 
 
 
