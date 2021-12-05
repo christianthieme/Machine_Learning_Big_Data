@@ -655,6 +655,8 @@ ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
 
 From the visual above, we can see that our model found that a k value of around 27 with a distance of 2 and a weighting function of rectangular produced the best model with an accuracy of 77.2%.
 
+This is a rather large value for k, which indicates that the groups are rather spread out and that KNN may not be the best method for predicting our target variable. Additionally, the sensitivity of this model is extremely low, once again indicating that this model is likely not ideal.
+
 ---
 
 
