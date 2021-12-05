@@ -586,15 +586,15 @@ knn_test <- knn_processed[-train_ind,]
 
 Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). 
 
-```{r warning=FALSE}
+```{r eval=FALSE}
 library(kknn)
 
 kknn_func <- function(train_x, train_y, test_x, test_y){
-  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
+  results_df <- data.frame(matrix(nrow = 0, ncol = 6))
   
   weights <- c("rectangular","triangular")
   
-  for(d in 1:10){
+  for(d in 1:2){
     print(d)
     for(w in weights){
       print(w)
@@ -608,28 +608,42 @@ kknn_func <- function(train_x, train_y, test_x, test_y){
         
         cM <- table(test_y, fitted(kknnModel))
         accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
+        sensitivity <- (cM[4])/(cM[4]+cM[2])
+        specificity <- (cM[1])/(cM[1]+cM[3])
+        results_df <- rbind(results_df,c(i,
+                                         accuracy,
+                                         specificity,
+                                         sensitivity,
+                                         w,
+                                         d))
       }
     }
   }
 
-  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
-  acc_df[,1] <- as.integer(acc_df[,1])
-  acc_df[,2] <- as.numeric(acc_df[,2])
-  acc_df[,4] <- as.integer(acc_df[,4])
+  colnames(results_df) <- c("k",
+                            "Accuracy",
+                            "Specificity",
+                            "Sensitivity",
+                            "Weight",
+                            "Distance")
+  results_df[,1] <- as.integer(results_df[,1])
+  results_df[,2] <- as.numeric(results_df[,2])
+  results_df[,3] <- as.numeric(results_df[,3])
+  results_df[,4] <- as.numeric(results_df[,4])
+  results_df[,6] <- as.integer(results_df[,6])
   
-  return(acc_df)
+  return(results_df)
 }
 
-kknn_acc <- kknn_func(knn_train[,-1],
-                      knn_train[,1],
-                      knn_test[,-1],
-                      knn_test[,1])
+kknn_results <- kknn_func(knn_train[,-1],
+                          knn_train[,1],
+                          knn_test[,-1],
+                          knn_test[,1])
 
-head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
-acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
+head(kknn_results[order(-kknn_results$Accuracy),], n = 10)
+acc_plot_data <- kknn_results[which(kknn_results$Distance == 5),]
 
-ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
+ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
   labs(title = "KKNN: k distribution",
@@ -890,7 +904,7 @@ Detailed results of the individual models are given above, however, a comparison
 |----------------|------------|-------------|-------------|
 | Decision Tree  |     65.0%  |    70.5%    |   33.3%     | 
 | Random Forest  |     65.0%  |    70.5%    |   33.3%     | 
-| KNN            |     65.0%  |    70.5%    |   33.3%     | 
+| KNN            |     77.2%  |    91.7%    |   33.6%     | 
 | Gradient Boost |     77.8%  |    81.7%    |   58.3%     |        
 | SVM            |     72.0%  |    86.1%    |   45.7%     |  
 
