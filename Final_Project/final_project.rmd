@@ -391,7 +391,7 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-These 8 groups are generally different combinations of training_hours (high vs low) and different sets of experience (again, high vs low). This visualization makes it difficult to compare some of the smaller values, such as city_development_index and last_new_job, so let's create a new visualization for them.
+These 3 groups are generally different combinations of training_hours (high vs low) and different sets of experience (again, high vs low). This visualization makes it difficult to compare some of the smaller values, such as city_development_index and last_new_job, so let's create a new visualization for them.
 
 ```{r}
 km_city <- km_comparison %>%
