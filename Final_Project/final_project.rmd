@@ -347,8 +347,6 @@ fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
 
 ```{r}
-library(factoextra)
-
 km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
@@ -441,7 +439,7 @@ set.seed(43)
 df_folds <- bootstraps(df_train, strata = target, times=10)
 ```
 
-The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to overfit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accuracte. To adjust for imbalance we downsample the target so it's 50-50.
+The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to over fit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accurate. To adjust for imbalance we down sample the target so it's 50-50.
 
 ```{r}
 df_train_rec <- recipe(target ~ ., data=df_train) %>%
@@ -455,7 +453,6 @@ We instantiate the decision tree and fit it with the training set
 
 ```{r, message=F, warning=FALSE}
 dt <- rpart(target~., data=df_train)
-dt
 ```
 
 The trained model is then used on the test set to evaluate it's performance.
@@ -473,15 +470,16 @@ fp <- dt_cm$table[2]
 fourfoldplot(dt_cm$table)
 ```
 
-The confusion matrix shows we correctly predicted No `r tn` times and Yes `r tp` times for an overall accuracy of 77.54%. Our model has higher recall and precision. This means that our model is better at predicting if someone is not looking for a job.
+The confusion matrix shows we correctly predicted No `r tn` times and Yes `r tp` times for an overall accuracy of 77.54%. Our model has higher recall and precision. This means that our model is better at predicting if someone will stay at their current position as oppose to looking for a new one.
 
 ### Random Forest    
 
 The decision tree algorithm is quite easy to understand and interpret. However, often a single tree is not sufficient for producing effective results. This is where the Random Forest algorithm comes into the picture.  
 
-We'll build a random forest model with 1500 trees where mtry and min_n as tunable parameters.
+We'll build a random forest model with 1500 trees where mtry and min_n are tunable parameters.
 
 ```{r}
+seed(42)
 rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees=100) %>%
   set_mode('classification') %>%
   set_engine('ranger')
@@ -491,7 +489,7 @@ rf_workflow <- workflow() %>%
   add_model(rf_spec)
 ```
 
-The random forest is tuned through a grid with parallel processing
+The random forest is tuned through a grid of 30 possible values with parallel processing
 
 ```{r}
 set.seed(42)
@@ -499,32 +497,32 @@ doParallel::registerDoParallel()
 rf_tune <- tune_grid(rf_workflow, resamples = df_folds, grid=30)
 ```
 
-With the model tuned we can
+With the model tuned we can look at the sample space for the highest roc_auc
 
 ```{r}
 show_best(rf_tune, metric='roc_auc')
 autoplot(rf_tune)
 ```
 
-Selecting the best parameters we train the full model on the trainined set
+Now with the best parameters we train the full model on the trainined set to obtain our finalized model.
 
 ```{r}
 rf_model <- rf_workflow %>%
   finalize_workflow(select_best(rf_tune, metric='roc_auc'))
+rf_fit <- last_fit(rf_model, df_split)
 ```
-
-When the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
 
 #### Testing
 
+The finalized model is evaluated on the test set to determine how it would perform on unseen data.
+
 ```{r}
-rf_fit <- last_fit(rf_model, df_split)
 metrics <- collect_metrics(rf_fit)
 metrics
 roc_auc <- (metrics %>% filter(.metric == 'roc_auc'))$.estimate
 ```
 
-Our model has an roc_auc of `r roc_auc` on the test set which is a about the same on the training set.
+Our model has an roc_auc of `r roc_auc` on the test set which is a about the same on the training set. This implies the model has generalized on the training set after the down sampling.
 
 Feature importance
 
@@ -542,7 +540,7 @@ workflow() %>%
   labs(y='Importance', x='Features')
 ```
 
-The most important feature is city_development_index by a wide margin. Next is the city and relevant experience followed by university and base experience.
+The most important feature is city_development_index by a wide margin. Next is the city and relevant experience followed by university and base experience. The city_development_index would be a variable to take a closer look at in the future.
 
 ```{r}
 model <- rf_fit$.workflow[[1]]
@@ -550,11 +548,16 @@ y_pred <- predict(model, df_test)
 rf_df <- data.frame(y_pred=y_pred$.pred_class, y_true=df_test$target)
 rf_cm <- confusionMatrix(table(rf_df$y_true, rf_df$y_pred), positive='1')
 rf_cm
+
+tn <- dt_cm$table[1]
+tp <- dt_cm$table[4]
+fn <- dt_cm$table[3]
+fp <- dt_cm$table[2]
+
 fourfoldplot(rf_cm$table)
 ```
 
-The confusion matrix shows we correctly predicted someone is not looking for a job 2761 times and someone is looking for a job 747 times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value). This means that our model is more accurate at predicting those who do not qualify for a loan than those who do. 
-
+The confusion matrix shows we correctly predicted an individual will stay at their current job `r tp` times and is looking for a new position `r tn` times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value) which states it can catch false negatives better than false positives. A false negative is when the model predicts an individual will leave but they are actually going to stay, a false positive is when the model predicts an individual will stay but they are planning to leave.
 
 ---
 
