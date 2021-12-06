@@ -470,8 +470,8 @@ The decision tree algorithm is quite easy to understand and interpret. However, 
 We'll build a random forest model with 1500 trees where mtry and min_n are tunable parameters.
 
 ```{r}
-seed(42)
-rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees=100) %>%
+set.seed(42)
+rf_spec <- rand_forest(mtry = tune(), min_n = tune(), trees=1500) %>%
   set_mode('classification') %>%
   set_engine('ranger')
 
