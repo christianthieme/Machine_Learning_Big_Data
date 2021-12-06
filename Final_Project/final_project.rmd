@@ -309,14 +309,14 @@ As a conclusion to our exploratory data analysis, we determined it appropriate t
 
 #### K-Means Clustering
 
-K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters). We ultimately chose to use k-means instead of hierarchical clustering due to there being no real reason to believe this data has a hierarchical structure to it.
+K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters).
 
 The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors.
 
 ```{r}
 library(tidyverse)
 
-kmeans <- train %>%
+kmeans_df <- train %>%
   dplyr::select(city_development_index, training_hours, experience, last_new_job) %>%
   mutate_if(is.factor, as.character) %>%
   mutate(experience = replace(experience, experience == ">20", 20)) %>%
@@ -331,12 +331,12 @@ The next step was to transform the data. Again, the euclidean based distance mea
 ```{r}
 library(caret)
 
-kmeans_trans <- preProcess(kmeans,
+kmeans_trans <- preProcess(kmeans_df,
                            method = c("center", "scale", "BoxCox"))
-kmeans_trans <- predict(kmeans_trans, kmeans)
+kmeans_trans <- predict(kmeans_trans, kmeans_df)
 ```
 
-Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 8 clusters.
+Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 3 clusters.
 
 ```{r}
 library(factoextra)
@@ -347,16 +347,32 @@ fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
 
 ```{r}
-km.res <- kmeans(kmeans_trans, centers = 8, nstart = 50)
+library(factoextra)
+
+km.res <- kmeans(kmeans_trans, centers = 3, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
-What incredible clusters! In an effort to get a sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly. Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
+What incredible clusters! To get a sense of our clusters, we first performed computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA. We can see that dimension 2 is essentially completely comprised of training_hours and that dimension 1 is a combination of the rest of the variables.
+
+Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
+
+```{r}
+library("FactoMineR")
+
+pca.res <- PCA(kmeans_df, graph = FALSE)
+
+fviz_pca_var(pca.res, col.var="contrib",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE)
+```
+
+In an effort to get a better sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
 
 ```{r}
 library(tidyverse)
-km_res <- cbind(kmeans, km.res$cluster)
-km_comparison <- km_res %>%
+km_comparison <- cbind(kmeans_df, km.res$cluster)
+km_comparison <- km_comparison %>%
   group_by(km.res$cluster) %>%
   rename(cluster = `km.res$cluster`) %>%
   summarise_all(mean) %>%
@@ -375,39 +391,12 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-These 8 groups are generally different combinations of training_hours (high vs low) and different sets of experience (again, high vs low). This visualization makes it difficult to compare some of the smaller values, such as city_development_index and last_new_job, so let's create a new visualization for them.
+These 3 groups are generally different combinations of experience (high vs low) and last_new_job (high vs low). Our 3 groups look like:  
 
-```{r}
-km_city <- km_comparison %>%
-  filter(category == "city_development_index")
+* lots of experience and a long time since the last job switch  
+* medium experience and a short time since last job switch  
+* little experience and a short time since last job switch  
 
-ggplot(km_city,
-       aes(x = as.factor(cluster),
-           y = mean,
-           fill = as.factor(category))) +
-  geom_bar(position = "dodge",
-           stat = "identity") +
-  scale_fill_brewer(palette = "Set3") +
-  labs(x = "Cluster",
-       y = "Value",
-       fill = "Factor")
-
-km_job <- km_comparison %>%
-  filter(category == "last_new_job")
-
-ggplot(km_job,
-       aes(x = as.factor(cluster),
-           y = mean,
-           fill = as.factor(category))) +
-  geom_bar(position = "dodge",
-           stat = "identity") +
-  scale_fill_brewer(palette = "Set3") +
-  labs(x = "Cluster",
-       y = "Value",
-       fill = "Factor")
-```
-
-These extra visualizations make it clear that the groupings also include a variation in the city_development_index and the last_new_job category.
 ---  
 
 
@@ -445,7 +434,9 @@ The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our mode
 df_train_rec <- recipe(target ~ ., data=df_train) %>%
   themis::step_downsample(target)
 
-smp <- df_train_rec %>% prep() %>% bake(new_data=NULL)
+smp <- df_train_rec %>% 
+  prep() %>% 
+  bake(new_data=NULL)
 table(smp$target)
 ```
 
@@ -512,6 +503,8 @@ rf_model <- rf_workflow %>%
 rf_fit <- last_fit(rf_model, df_split)
 ```
 
+With the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
+
 #### Testing
 
 The finalized model is evaluated on the test set to determine how it would perform on unseen data.
@@ -563,9 +556,7 @@ The confusion matrix shows we correctly predicted an individual will stay at the
 
 ### KNN
 
-KNN requires that there is no missing data in the dataset. Based on our analysis, we know that we have NULL values in our dataset. To fill in the gaps, we can either impute or omit our missing values. Since we have already imputed these observations during our EDA, we'll continue with that method here.
-
-Following the required imputation of the missing data, we need to do a little bit of pre-processing. KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
+KNN is highly susceptible to data that is on different scales (large values will be much further from each other than small values). With this in mind, we have chosen to center and scale all of our predictors. The final step of pre-processing is to remove any predictors that have near-zero variance so that there are no overlapping predictors.
 
 ```{r}
 library(caret)
@@ -602,15 +593,15 @@ knn_test <- knn_processed[-train_ind,]
 
 Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). 
 
-```{r warning=FALSE}
+```{r eval=FALSE}
 library(kknn)
 
 kknn_func <- function(train_x, train_y, test_x, test_y){
-  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
+  results_df <- data.frame(matrix(nrow = 0, ncol = 6))
   
   weights <- c("rectangular","triangular")
   
-  for(d in 1:10){
+  for(d in 1:2){
     print(d)
     for(w in weights){
       print(w)
@@ -624,28 +615,42 @@ kknn_func <- function(train_x, train_y, test_x, test_y){
         
         cM <- table(test_y, fitted(kknnModel))
         accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
+        sensitivity <- (cM[4])/(cM[4]+cM[2])
+        specificity <- (cM[1])/(cM[1]+cM[3])
+        results_df <- rbind(results_df,c(i,
+                                         accuracy,
+                                         specificity,
+                                         sensitivity,
+                                         w,
+                                         d))
       }
     }
   }
 
-  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
-  acc_df[,1] <- as.integer(acc_df[,1])
-  acc_df[,2] <- as.numeric(acc_df[,2])
-  acc_df[,4] <- as.integer(acc_df[,4])
+  colnames(results_df) <- c("k",
+                            "Accuracy",
+                            "Specificity",
+                            "Sensitivity",
+                            "Weight",
+                            "Distance")
+  results_df[,1] <- as.integer(results_df[,1])
+  results_df[,2] <- as.numeric(results_df[,2])
+  results_df[,3] <- as.numeric(results_df[,3])
+  results_df[,4] <- as.numeric(results_df[,4])
+  results_df[,6] <- as.integer(results_df[,6])
   
-  return(acc_df)
+  return(results_df)
 }
 
-kknn_acc <- kknn_func(knn_train[,-1],
-                      knn_train[,1],
-                      knn_test[,-1],
-                      knn_test[,1])
+kknn_results <- kknn_func(knn_train[,-1],
+                          knn_train[,1],
+                          knn_test[,-1],
+                          knn_test[,1])
 
-head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
-acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
+head(kknn_results[order(-kknn_results$Accuracy),], n = 10)
+acc_plot_data <- kknn_results[which(kknn_results$Distance == 5),]
 
-ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
+ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
   geom_line() +
   geom_point() +
   labs(title = "KKNN: k distribution",
@@ -653,69 +658,11 @@ ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
        y = "Accuracy")
 ```
 
+![]("https://github.com/christianthieme/Machine_Learning_Big_Data/blob/main/Final_Project/knn_accuracy.jpeg")
 
-From the visual above, we can see that our model found that a k value of around 9 with a distance of 5 and a weighting function of rectangular produced the best model with an accuracy of 82.5%.
+From the visual above, we can see that our model found that a k value of around 27 with a distance of 2 and a weighting function of rectangular produced the best model with an accuracy of 77.2%.
 
-To validate these results, we'll randomize our training and testing sets one more time and check to see if the results are similar.
-
-```{r warning=FALSE}
-library(kknn)
-
-set.seed(12345)
-train_ind <- sample(seq_len(nrow(knn_processed)),
-                    size = floor(0.75*nrow(knn_processed)))
-knn_train <- knn_processed[train_ind,]
-knn_test <- knn_processed[-train_ind,]
-
-kknn_func <- function(train_x, train_y, test_x, test_y){
-  acc_df <- data.frame(matrix(nrow = 0, ncol = 4))
-
-  weights <- c("rectangular","triangular")
-
-  for(d in 1:10){
-    print(d)
-    for(w in weights){
-      print(w)
-      for(i in 2:5=30){
-        kknnModel <- kknn(train_y ~ .,
-                          train_x,
-                          test_x,
-                          k = i,
-                          distance = d,
-                          kernel = w)
-
-        cM <- table(test_y, fitted(kknnModel))
-        accuracy <- (cM[1]+cM[4])/(cM[1]+cM[2]+cM[3]+cM[4])
-        acc_df <- rbind(acc_df,c(i,accuracy,w,d))
-      }
-    }
-  }
-  colnames(acc_df) <- c("k", "Accuracy","Weight","Distance")
-  acc_df[,1] <- as.integer(acc_df[,1])
-  acc_df[,2] <- as.numeric(acc_df[,2])
-  acc_df[,4] <- as.integer(acc_df[,4])
-  return(acc_df)
-}
-
-kknn_acc <- kknn_func(knn_train[,-1],
-                      knn_train[,1],
-                      knn_test[,-1],
-                      knn_test[,1])
-
-head(kknn_acc[order(-kknn_acc$Accuracy),], n = 10)
-
-acc_plot_data <- kknn_acc[which(kknn_acc$Distance == 5),]
-
-ggplot(data = kknn_acc, aes(x = k, y = Accuracy, color = Weight)) +
-  geom_line() +
-  geom_point() +
-  labs(title = "KKNN: k distribution",
-       x = "k",
-       y = "Accuracy")
-```
-
-After tuning our hyper parameters again, we arrived at a similar result: a k value of around 9 and a rectangular weighting provided us with the best version of a KNN model.
-
+This is a rather large value for k, which indicates that the groups are rather spread out and that KNN may not be the best method for predicting our target variable. Additionally, the sensitivity of this model is extremely low, once again indicating that this model is likely not ideal.
 
 ---
 
@@ -834,59 +781,69 @@ As a point of interest, we can use the `summary` function on our final model obj
 
 ### Support Vector Machine
 
-A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who commit suicide and those who don't base on the features we have.
+A Support Vector Machine (SVM) is an algorithm that searches the feature space for the optimal hyper plane. This hyper plane will separate the features by classes with the maximum margin. Here we train an SVM to find the dividing plane between those who Not looking for a job change and those that are looking for a job change based on the features we have.
 
-The trained dataset is fit to an SVM
+The trained dataset `smp` is fit to an SVM
 
 ```{r}
-# set.seed(42)
-# svm_model = svm(suicide~., data=df_train, kernel='linear', probability=TRUE)
-# summary(svm_model)
+set.seed(42)
+svm_model = svm(target ~ ., data=smp) 
+summary(svm_model)
 ```
 
-Our base model consists of 71 support vectors where 31 are assigned to label 0 (no suicide) and 40 to label 1 (suicide)
+
+Our base model consists of 4993 support vectors where 2511 are assigned to label 0 (not looking for a job change) and 2482 to label 1 (looking for a job change)
 
 We will tune the SVM with the training set to find the best values for gamma and cost. The tuning process is done with 10 fold cross validation.
 
-```{r}
-# set.seed(42)
-# svm_tune <- tune.svm(suicide~., data = df_train, gamma = 0.25, cost = seq(0.1,1,0.1))
-# summary(svm_tune)
-# svm_best <- svm_tune$best.model
+```{r eval=FALSE, include=FALSE}
+set.seed(42)
+#svm_tune <- tune.svm(target~., data = smp, gamma=c(.25,.5,1), cost = seq(0.1,1,0.1))
+
+x <- subset(smp, select=-target)
+y <- subset(smp, select=target)
+
+svm_tune <- tune(svm, train.x=x, train.y=y,kernel="radial", ranges=list(cost=10^(-1:2), gamma=c(.25,.5,1)))
+
+summary(svm_tune)
+svm_best <- svm_tune$best.model
 ```
 
-It looks like the best parameters are gamma = 0.25 and cost = 0.1.
+It looks like the best parameters are gamma = 0.5 and cost = 1.
 
 ```{r, echo=F}
-# set.seed(42)
-# svm_model = svm(suicide~., data=df_train, cost=0.1, gamma=0.25, kernel='linear', probability=TRUE)
-# summary(svm_model)
-# svm_best <- svm_model
+ set.seed(42)
+ svm_model = svm(target~., data=smp, cost=1, gamma=0.5, kernel='radial', probability=TRUE)
+ summary(svm_model)
+ svm_best <- svm_model
 ```
 
 Now with the best model we can try it against the test set:
 
 ```{r}
-# set.seed(42)
-# 
-# y_test = predict(svm_best, df_test %>% select(-c(suicide)))
-# confusionMatrix(df_test[,'suicide'], y_test, positive='1')
+set.seed(42)
+
+x <-  subset(df_test, select=-target) 
+y <- subset(df_test, select=target) 
+  
+y_test = predict(svm_best, x )
+confusionMatrix(df_test[,'target'], y_test, positive='1')
 ```
 
-Based on the results above, we can see that the model is most accurate at predicting someone who will not commit suicide with 24 true negatives. The largest mistake is 8 false positives, meaning the model predicted that those individuals would attempt suicide when they didn't. There are also 4 false negatives which is a situation where the model predicts those individual won't attempt suicide when they did.
+Based on the results above, we can see that the model is most accurate at predicting someone who will not change job  with 2692 true negatives. The largest mistake is 433 false positives, meaning the model predicted that those individuals would change job when they didn't. There are also 904 false negatives which is a situation where the model predicts those individual will not change job when they did.
 
 ```{r}
-# set.seed(42)
-# pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
-# pred_prob <- attr(pred, 'probabilities')
-# df_prob <- cbind(df_test %>% select(suicide), y_test, pred_prob)
-# names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
-# summary(df_prob)
+set.seed(42)
+pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
+pred_prob <- attr(pred, 'probabilities')
+df_prob <- cbind(y, y_test, pred_prob)
+names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
+summary(df_prob)
+
 ```
 
-The predicted probabilities are inline with our analysis of the training and testing set. From the predicted probabilities the SVM model is more likely to predict that an individual will not commit suicide, true negatives. The sensitivity and specificity further add to this models strength but the low positive predicative value shows it's draw backs. This SVM wouldn't do well in the real world since it will miss the most important cases, the situation where we want to stop someone from attempting suicide.
+The predicted probabilities are inline with our analysis of the training and testing set. From the predicted probabilities the SVM model is more likely to predict that an individual will not change job, true negatives. The sensitivity and specificity further add to this models strength. This SVM may do well in the real world.
 
-There is always a trade off between precision and recall, and depending on the situation, we want to prioritize one over the other. In the case of suicides false positives are fine because that means we put time into stopping someone who wasn't going to commit suicide anyways. However false negatives are the worst, since that would be an individual that isn't given attention and will mostly likely commit suicide.
 
 ### Modeling Comparison
 
@@ -894,17 +851,13 @@ Detailed results of the individual models are given above, however, a comparison
 
 | Model          | Accuracy   | Specificity | Sensitivity |
 |----------------|------------|-------------|-------------|
-| Decision Tree  |     65.0%  |    70.5%   |     33.3%     | 
-| Random Forest  |     65.0%  |    70.5%   |     33.3%     | 
-| KNN            |     65.0%  |    70.5%   |     33.3%     | 
-| Gradient Boost |     77.8%  |    81.7%   |     58.3%     |          
-| SVM            |     65.0%  |    70.5%   |     33.3%     |  
-
-
-
+| Decision Tree  |     65.0%  |    70.5%    |   33.3%     | 
+| Random Forest  |     65.0%  |    70.5%    |   33.3%     | 
+| KNN            |     77.2%  |    91.7%    |   33.6%     | 
+| Gradient Boost |     77.8%  |    81.7%    |   58.3%     |        
+| SVM            |     72.0%  |    86.1%    |   45.7%     |  
 
 
 
 ## Conclusion
 
- 
