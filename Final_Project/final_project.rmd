@@ -15,7 +15,6 @@ output:
   pdf_document: default
 ---
 
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
@@ -39,8 +38,8 @@ library(vip)
 library(ranger)
 ```
 
-
 ### Group 1 Members:
+
 -   David Moste
 -   Vinayak Kamath
 -   Kenan Sooklall
@@ -51,37 +50,51 @@ library(ranger)
 
 ## Introduction
 
-Data scientists are in extremely high demand around the world. Companies are constantly fighting to acquire and keep talented professionals. However, as we've seen in the last year, many professionals are leaving their jobs and looking for new employment? Why is this? What are the factors behind it? And is this something that can be predicted? 
+Data scientists are in extremely high demand around the world. Companies are constantly fighting to acquire and keep talented professionals. However, as we've seen in the last year, many professionals are leaving their jobs and looking for new employment. Why is this? What are the factors behind it? And is this something that can be predicted?
 
-In this project we will be utilizing a dataset from a Kaggle Competition titled, "HR Analytics: Job Changes of Data Scientists". This competition's focus is to determine which data scientists will be looking for a job change. That being said, the target variable is labeled `target` and is a binary 0 or 1 indicating whether the individual is not looking for a job change or is, respectively. To do this, we've been provided with a training dataset with the following columns: 
+In this project we will be utilizing a dataset from a Kaggle Competition titled, "HR Analytics: Job Changes of Data Scientists". This competition's focus is to determine which data scientists will be looking for a job change. That being said, the target variable is labeled `target` and is a binary 0 or 1 indicating whether the individual is not looking for a job change or is, respectively. To do this, we've been provided with a training dataset with the following columns:
 
-| Variable        | Description                                            | 
-|-----------------|--------------------------------------------------------|
-|  enrollee_id    |   Unique ID for each candidate                         | 
-|  city           |   city code                                            |
-|  city_development_index          |   scaled development index of the city  |
-|  gender           |  gender of the candidate                            |
-| relevant_experience | Binary field indicating if the candidate has experience |
-| enrolled_university | University enrollment type (if any)               |
-| education_level    | Level of education completed | 
-| major_discipline | The focus area of their studies | 
-| experience | number of years of experience | 
-| company_size | number of employees at their current company of employ | 
-| company_type | Type of company (startup, private, etc.) | 
-| last_new_job | How many years they were at their previous job for | 
-| training_hours | How many hours of training they have completed |
-| target | 0 - Not looking for a job change, 1 - Looking for a job change |  
++------------------------+----------------------------------------------------------------+
+| Variable               | Description                                                    |
++========================+================================================================+
+| enrollee_id            | Unique ID for each candidate                                   |
++------------------------+----------------------------------------------------------------+
+| city                   | city code                                                      |
++------------------------+----------------------------------------------------------------+
+| city_development_index | scaled development index of the city                           |
++------------------------+----------------------------------------------------------------+
+| gender                 | gender of the candidate                                        |
++------------------------+----------------------------------------------------------------+
+| relevant_experience    | Binary field indicating if the candidate has experience        |
++------------------------+----------------------------------------------------------------+
+| enrolled_university    | University enrollment type (if any)                            |
++------------------------+----------------------------------------------------------------+
+| education_level        | Level of education completed                                   |
++------------------------+----------------------------------------------------------------+
+| major_discipline       | The focus area of their studies                                |
++------------------------+----------------------------------------------------------------+
+| experience             | number of years of experience                                  |
++------------------------+----------------------------------------------------------------+
+| company_size           | number of employees at their current company of employ         |
++------------------------+----------------------------------------------------------------+
+| company_type           | Type of company (startup, private, etc.)                       |
++------------------------+----------------------------------------------------------------+
+| last_new_job           | How many years they were at their previous job for             |
++------------------------+----------------------------------------------------------------+
+| training_hours         | How many hours of training they have completed                 |
++------------------------+----------------------------------------------------------------+
+| target                 | 0 - Not looking for a job change, 1 - Looking for a job change |
++------------------------+----------------------------------------------------------------+
 
-Our task will be to preform an extensive exploratory data analysis, including a clustering analysis, to get an understanding of the data, perform any necessary data transformations (feature engineering, imputation, etc.), and then build the following models to see which is the most accurate in predicting which data scientists are looking to leave their jobs: 
+Our task will be to preform an extensive exploratory data analysis, including a clustering analysis, to get an understanding of the data, perform any necessary data transformations (feature engineering, imputation, etc.), and then build the following models to see which is the most accurate in predicting which data scientists are looking to leave their jobs:
 
-* Decision Tree
-* Random Forest
-* K-Nearest Neighbors
-* XGBoost
-* SVM
+-   Decision Tree
+-   Random Forest
+-   K-Nearest Neighbors
+-   XGBoost
+-   SVM
 
-
---- 
+------------------------------------------------------------------------
 
 ## Exploratory Data Analysis
 
@@ -89,12 +102,13 @@ Our task will be to preform an extensive exploratory data analysis, including a 
 train <- readr::read_csv('https://raw.githubusercontent.com/christianthieme/Machine_Learning_Big_Data/main/Final_Project/aug_train.csv')
 ```
 
-Let’s begin exploring by taking a high level look at our dataset:
+Let's begin exploring by taking a high level look at our dataset:
 
 ```{r}
 glimpse(train)
 ```
-We can see that there is a mix of both numeric and categorical data. We note that most of the columns appear to be categorical data and the column type should be changed to factor. Additionally, our target variable `target` should also be a factor. We'll make these changes now.  
+
+We can see that there is a mix of both numeric and categorical data. We note that most of the columns appear to be categorical data and the column type should be changed to factor. Additionally, our target variable `target` should also be a factor. We'll make these changes now.
 
 ```{r echo=FALSE}
 train <- train %>% 
@@ -109,23 +123,22 @@ inspectdf::inspect_types(pie_chart) %>%
   show_plot
 ```
 
-Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there are two columns that are of type integer. We note that `enrollee_id` is just a field used for identification and will not be used during modeling. 
+Having made the necessary changes, we can see in the visual above, that our dataset is mostly categorical data. However, there are two columns that are of type integer. We note that `enrollee_id` is just a field used for identification and will not be used during modeling.
 
 ### Numerical Features
 
-As mentioned previously, we have two numerical features, `city_development_index` and `training_hours`. Let's visualize these distributions to get a better sense of their shape: 
+As mentioned previously, we have two numerical features, `city_development_index` and `training_hours`. Let's visualize these distributions to get a better sense of their shape:
 
 ```{r echo=FALSE}
 inspectdf::inspect_num(train %>% dplyr::select(-enrollee_id)) %>% 
  show_plot()
 ```
 
-In looking at the distribution of `city_development_index`, it appears that our dataset is multi-modal. This often means that there are sub-populations within the data. We'll keep this in mind as we continue our exploration. Additionally, we note that a significant portion of our dataset live where the city_development_index is greater than ~0.87. 
+In looking at the distribution of `city_development_index`, it appears that our dataset is multi-modal. This often means that there are sub-populations within the data. We'll keep this in mind as we continue our exploration. Additionally, we note that a significant portion of our dataset live where the city_development_index is greater than \~0.87.
 
 As we'd expect, the distribution of `training_hours` is extremely right skewed. We see the majority of the population have less than 100 hours of training.
 
-Let's now visualize the relationship each of these variables has with `target`, starting with `city_development_index`: 
-
+Let's now visualize the relationship each of these variables has with `target`, starting with `city_development_index`:
 
 ```{r echo=FALSE}
 ggplot(train) +
@@ -144,9 +157,9 @@ ggplot(train) +
   
 ```
 
-Looking at the boxplots above, we can see that those who are not looking to leave their jobs, most often, live in cities with a high city development index. Looking at the boxplot on the right of those who are considering leaving their jobs, we can see that the median value is much lower and the interquartile range is much wider. It does appear that `city_development_index` has a strong relationship with `target`. 
+Looking at the boxplots above, we can see that those who are not looking to leave their jobs, most often, live in cities with a high city development index. Looking at the boxplot on the right of those who are considering leaving their jobs, we can see that the median value is much lower and the interquartile range is much wider. It does appear that `city_development_index` has a strong relationship with `target`.
 
-We'll now look at the relationship between `training_hours` and `target`: 
+We'll now look at the relationship between `training_hours` and `target`:
 
 ```{r echo=FALSE}
 ggplot(train) +
@@ -165,35 +178,32 @@ ggplot(train) +
   
 ```
 
-In looking at the boxplots above, we do not note a significant relationship between this variable and `target`. In fact, the boxplots are almost identical. 
+In looking at the boxplots above, we do not note a significant relationship between this variable and `target`. In fact, the boxplots are almost identical.
 
+### Categorical Features
 
-### Categorical Features 
-
-Now let’s turn our attention to our categorical variables. We'll start by visualizing this data: 
+Now let's turn our attention to our categorical variables. We'll start by visualizing this data:
 
 ```{r echo=FALSE, fig.height=10, fig.width=8}
 inspect_cat(train) %>% 
   show_plot()
 ```
 
-In looking at the visualization above, we note: 
+In looking at the visualization above, we note:
 
-* `city`: A large portion of our dataset come from 5-6 different cities, however, this factor has many different unique values. 
-* `company_size`: This column was most often left blank. There appear to be a good mix of individuals from every company size. 
-* `company_type`: A large portion of individuals work at a private company. This column was also left blank very frequently. 
-* `education_level`: A large percentage of the population have a graduate degree, which is usually the same as Masters which is the second most frequent value. Perhaps these values should be combined? 
-* `enrolled_university`: About 75% of the population is not enrolled in a university. This is what we'd expect, as most individuals have probably already graduated with their degrees. 
-* `experience`: This column is surprising. Here we see that the largest group in this factor is ">20" years of experience. This is unusual as there are few people in the data science industry with that much experience. We do, however, see a good amount of other responses within this column. 
-* `gender`: The majority of our population is Male or did not answer. This is probably expected as the engineering world often has more men than women. 
-* `last_new_job`: Interestingly, it looks like for a good percentage of our population, they were only at their last job for 1 year. The next largest group was at their last job for ">4" years. 
-* `major_discipline`: Not surprisingly, the overwhelming focus of individual's study was in the STEM field. We note a good population of missing values in this field.
-* `relevant_experience`: It appears that about 2/3 of our dataset has relevant experience
-* `target`: We note a class imbalance here in that it appears that about 75% of our dataset is not looking to leave their current job. 
+-   `city`: A large portion of our dataset come from 5-6 different cities, however, this factor has many different unique values.
+-   `company_size`: This column was most often left blank. There appear to be a good mix of individuals from every company size.
+-   `company_type`: A large portion of individuals work at a private company. This column was also left blank very frequently.
+-   `education_level`: A large percentage of the population have a graduate degree, which is usually the same as Masters which is the second most frequent value. Perhaps these values should be combined?
+-   `enrolled_university`: About 75% of the population is not enrolled in a university. This is what we'd expect, as most individuals have probably already graduated with their degrees.
+-   `experience`: This column is surprising. Here we see that the largest group in this factor is "\>20" years of experience. This is unusual as there are few people in the data science industry with that much experience. We do, however, see a good amount of other responses within this column.
+-   `gender`: The majority of our population is Male or did not answer. This is probably expected as the engineering world often has more men than women.
+-   `last_new_job`: Interestingly, it looks like for a good percentage of our population, they were only at their last job for 1 year. The next largest group was at their last job for "\>4" years.
+-   `major_discipline`: Not surprisingly, the overwhelming focus of individual's study was in the STEM field. We note a good population of missing values in this field.
+-   `relevant_experience`: It appears that about 2/3 of our dataset has relevant experience
+-   `target`: We note a class imbalance here in that it appears that about 75% of our dataset is not looking to leave their current job.
 
-
-As we will be building models to predict `target`, let's see if a relationship exists between these categorical variables and `target`. To do this, we can explore the percentage of individuals who are looking for new jobs vs those who are not at each level of the factor. If we see significant differences between the percentages in each level, we can conclude that the factor and its associated levels are predictive of `target`. 
-
+As we will be building models to predict `target`, let's see if a relationship exists between these categorical variables and `target`. To do this, we can explore the percentage of individuals who are looking for new jobs vs those who are not at each level of the factor. If we see significant differences between the percentages in each level, we can conclude that the factor and its associated levels are predictive of `target`.
 
 ```{r echo=FALSE, fig.height=40, fig.width=12, message=FALSE, warning=FALSE}
 viz_data <- na.omit(train)
@@ -226,13 +236,12 @@ ggplot(viz_data) +
   gridExtra::grid.arrange(grobs = myGlist, ncol =1)
 ```
 
-In looking at the charts above, we see very minor differences between the percentages for those who are looking to leave their jobs and those who are not in almost all of our categorical features. However, we do note the following significant differences: 
+In looking at the charts above, we see very minor differences between the percentages for those who are looking to leave their jobs and those who are not in almost all of our categorical features. However, we do note the following significant differences:
 
-* `enrolled_university`: Those who are enrolled in a full time course are twice as likely to be looking for a new position. This makes sense as people who are in school are often preparing to start a new career or job when they finish. 
-* `experience`: Those with ">20" years of experience are twice as likely to stay at their current job. This also makes sense as they may be nearing the end of their career and want some security during the last several years of their career. 
+-   `enrolled_university`: Those who are enrolled in a full time course are twice as likely to be looking for a new position. This makes sense as people who are in school are often preparing to start a new career or job when they finish.
+-   `experience`: Those with "\>20" years of experience are twice as likely to stay at their current job. This also makes sense as they may be nearing the end of their career and want some security during the last several years of their career.
 
-
-We excluded a the view of `city` in the above graphic because of the number of distinct categories it contains. We show this chart in a separate view below:   
+We excluded a the view of `city` in the above graphic because of the number of distinct categories it contains. We show this chart in a separate view below:
 
 ```{r echo=FALSE, fig.height=17, fig.width=15, message=FALSE, warning=FALSE}
 ggplot(viz_data) +
@@ -252,66 +261,65 @@ ggplot(viz_data) +
   
 ```
 
-In almost all cities, we see very little difference, however, we do note a difference in city_21 and city_103 in that both of these cities are much more likely to have data scientists looking for a new position. 
+In almost all cities, we see very little difference, however, we do note a difference in city_21 and city_103 in that both of these cities are much more likely to have data scientists looking for a new position.
 
-Based on our EDA, it appears that there are quite a few of our categorical variables that hold little to no predictive power: 
+Based on our EDA, it appears that there are quite a few of our categorical variables that hold little to no predictive power:
 
-* `gender`
-* `relevant_experience`
-* `education_level`
-* `major_discipline`
-* `company_size`
-* `company_type`
-* `last_new_job`
+-   `gender`
+-   `relevant_experience`
+-   `education_level`
+-   `major_discipline`
+-   `company_size`
+-   `company_type`
+-   `last_new_job`
 
-Some of the algorithms we have chosen to model with may handle non-predictive variables better than others. We will make the decision to include/exclude each of these variables in the modeling section for each of these algorithms. Additionally, as some of these variables have a large percentage of missing values, we can also elect to drop them from the dataset if necessary. 
-
+Some of the algorithms we have chosen to model with may handle non-predictive variables better than others. We will make the decision to include/exclude each of these variables in the modeling section for each of these algorithms. Additionally, as some of these variables have a large percentage of missing values, we can also elect to drop them from the dataset if necessary.
 
 ### Missing Data
 
-As we've seen throughout our EDA, there are quite a few missing values within the columns. Let's take a closer look at this so we can determine the best way to deal with them. 
+As we've seen throughout our EDA, there are quite a few missing values within the columns. Let's take a closer look at this so we can determine the best way to deal with them.
 
 ```{r echo=FALSE, fig.height=6, fig.width=12}
 visdat::vis_miss(train, sort_miss = TRUE)
 ```
 
-We can see above that ~8% of our dataset is missing, with the largest contributors coming from `company_type`, `company_size`, `gender`, and `major_discipline`. Based on our analysis above, we have seen that these factors hold little to no predictive power, as such, we've decided to drop these variables from the dataset. 
+We can see above that \~8% of our dataset is missing, with the largest contributors coming from `company_type`, `company_size`, `gender`, and `major_discipline`. Based on our analysis above, we have seen that these factors hold little to no predictive power, as such, we've decided to drop these variables from the dataset.
 
 ```{r}
 train <- train %>%
   dplyr::select(-company_type, -company_size, -gender, -major_discipline, -enrollee_id)
 ```
 
-Having dropped these variables, lets look again at our missing values: 
+Having dropped these variables, lets look again at our missing values:
 
 ```{r echo=FALSE, fig.height=5, fig.width=12}
 visdat::vis_miss(train, sort_miss = TRUE)
 ```
 
-We can see now that we are only missing 0.7% of the values within our dataset now. Additionally, we don't note any patterns within the missing data. We can now use an imputation method to fill in the remainder of the missing values. 
+We can see now that we are only missing 0.7% of the values within our dataset now. Additionally, we don't note any patterns within the missing data. We can now use an imputation method to fill in the remainder of the missing values.
 
-We have chosen to use the pmm method (predictive mean matching) from the mice library to impute our missing values. Predictive mean matching calculates the predicted value for our target variable, and, for missing values, forms a small set of “candidate donors” from the complete cases that are closest to the predicted value for our missing entry. Donors are then randomly chosen from candidates and imputed where values were once missing. To apply pmm we assume that the distribution is the same for missing cells as it is for observed data, and thus, the approach may be more limited when the % of missing values is higher. 
+We have chosen to use the pmm method (predictive mean matching) from the mice library to impute our missing values. Predictive mean matching calculates the predicted value for our target variable, and, for missing values, forms a small set of "candidate donors" from the complete cases that are closest to the predicted value for our missing entry. Donors are then randomly chosen from candidates and imputed where values were once missing. To apply pmm we assume that the distribution is the same for missing cells as it is for observed data, and thus, the approach may be more limited when the % of missing values is higher.
 
 ```{r}
 train <- mice(data = train, m = 1, method = "pmm", seed = 500)
 train <- mice::complete(train, 1)
 ```
 
-We can see now that we have successfully imputed all missing values: 
+We can see now that we have successfully imputed all missing values:
 
 ```{r echo=FALSE}
 visdat::vis_miss(train, sort_miss = TRUE)
 ```
 
-### Unsupervised Learning - K-Nearest Neighbors
+### Unsupervised Learning - K-Means Clustering
 
-As a conclusion to our exploratory data analysis, we determined it appropriate to see if clustering could provide additional insight into this dataset. We have chosen to use K-Nearest Neighbors for this analysis. 
+As a conclusion to our exploratory data analysis, we determined it appropriate to see if clustering could provide additional insight into this dataset. We have chosen to use K-Means Clustering for this analysis.
 
 #### K-Means Clustering
 
-K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance. This method has many advantages (i.e. computationally efficient) and disadvantages (i.e. results change with every run, dependent on the starting values, no real way to determine appropriate number of clusters).
+K-Means clustering is a technique to create clusters by finding groups that are similar, as determined by euclidean distance.
 
-The first step was to pull out only the columns we wanted to use. Since k-means is based on euclidean distance, we chose to only use variables that had continuous values, ruling out all binary and factor based predictors.
+The first step is to select the columns we want to use. Since k-means is based on euclidean distance, we will include only the variables with continuous values, ruling out all binary and factor based predictors.
 
 ```{r}
 library(tidyverse)
@@ -338,26 +346,22 @@ kmeans_trans <- predict(kmeans_trans, kmeans_df)
 
 Now that we have our data set up, we can get a sense of how many clusters to create. To do this, we used the silhouette method. When the average silhouette width starts to decrease, you stop gaining information by dividing clusters. This led us to an optimal number of 3 clusters.
 
-```{r}
-library(factoextra)
-
-fviz_nbclust(kmeans_trans, kmeans, method = "silhouette", k.max = 20)
-```
+![](optimal_clusters.jpg)
 
 Now we can visualize our clusters! To visualize these four dimensional clusters, we used PCA to reduce the dimensionality of our data.
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 library(factoextra)
 
 km.res <- kmeans(kmeans_trans, centers = 3, nstart = 50)
 fviz_cluster(km.res, kmeans_trans)
 ```
 
-What incredible clusters! To get a sense of our clusters, we first performed computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA. We can see that dimension 2 is essentially completely comprised of training_hours and that dimension 1 is a combination of the rest of the variables.
+What incredible clusters! To get a sense of our clusters, we first computed the principle components of the original data via PCA. We then graphed the contribution of each variable to the top two dimensions in our PCA. We can see that dimension 2 is essentially completely comprised of training_hours and that dimension 1 is a combination of the rest of the variables.
 
-Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noticed originally.
+Unfortunately, kmeans data is not reproducible (even with a set seed), so our discussion here is based off of what we noted after our first model run.
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 library("FactoMineR")
 
 pca.res <- PCA(kmeans_df, graph = FALSE)
@@ -369,7 +373,7 @@ fviz_pca_var(pca.res, col.var="contrib",
 
 In an effort to get a better sense of the differences between these clusters and what made them unique, we went back to the original data and performed a comparative analysis. We computed the mean for each factor within each cluster and plotted these values on a graph to see the differences in the two clusters more clearly.
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 km_comparison <- cbind(kmeans_df, km.res$cluster)
 km_comparison <- km_comparison %>%
@@ -391,26 +395,27 @@ ggplot(km_comparison,
        fill = "Factor")
 ```
 
-These 3 groups are generally different combinations of experience (high vs low) and last_new_job (high vs low). Our 3 groups look like:  
+These 3 groups are generally different combinations of experience (high vs low) and last_new_job (high vs low). Our 3 groups look like:
 
-* lots of experience and a long time since the last job switch  
-* medium experience and a short time since last job switch  
-* little experience and a short time since last job switch  
+-   lots of experience and a long time since the last job switch\
+-   medium experience and a short time since last job switch\
+-   little experience and a short time since last job switch
 
----  
+In understanding these clusters above, we could potentially engineer some features to try to capture some of these signals that would perhaps lead us to increased prediction accuracy.
 
+------------------------------------------------------------------------
 
 ## Modeling
 
 ### Predicting Which Data Scientists Are Looking to Leave
 
-Having concluded our exploratory data analysis, we'll now build several models to attempt to predict which data scientists are looking to leave vs stay at their current job. We will use the following modeling approaches: 
+Having concluded our exploratory data analysis, we'll now build several models to attempt to predict which data scientists are looking to leave vs stay at their current job. We will use the following modeling approaches:
 
-* Decision Tree
-* Random Forest
-* K-Nearest Neighbors
-* XGBoost
-* SVM
+-   Decision Tree
+-   Random Forest
+-   K-Nearest Neighbors
+-   XGBoost
+-   SVM
 
 ### Decision Tree
 
@@ -428,7 +433,7 @@ set.seed(43)
 df_folds <- bootstraps(df_train, strata = target, times=10)
 ```
 
-The training set is imbalanced with ~14k 0s and ~5k 1s. This will cause our model to over fit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accurate. To adjust for imbalance we down sample the target so it's 50-50.
+The training set is imbalanced with \~14k 0s and \~5k 1s. This will cause our model to over fit on the class that is over represented. Stated differently if our model only guessed the target 0 it was be 75% accurate. To adjust for imbalance we down sample the target so it's 50-50.
 
 ```{r}
 df_train_rec <- recipe(target ~ ., data=df_train) %>%
@@ -440,7 +445,7 @@ smp <- df_train_rec %>%
 table(smp$target)
 ```
 
-We instantiate the decision tree and fit it with the training set
+We instantiate the decision tree and fit it with the training set:
 
 ```{r, message=F, warning=FALSE}
 dt <- rpart(target~., data=df_train)
@@ -448,11 +453,15 @@ dt <- rpart(target~., data=df_train)
 
 The trained model is then used on the test set to evaluate it's performance.
 
-```{r}
+```{r }
 dt.predictions <- predict(dt, df_test, type='class')
 dt_df = data.frame(y_true=df_test$target, y_pred=dt.predictions)
 dt_cm <- confusionMatrix(table(dt_df$y_true, dt_df$y_pred), positive='1')
 dt_cm
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
 tn <- dt_cm$table[1]
 tp <- dt_cm$table[4]
 fn <- dt_cm$table[3]
@@ -461,11 +470,11 @@ fp <- dt_cm$table[2]
 fourfoldplot(dt_cm$table)
 ```
 
-The confusion matrix shows we correctly predicted No `r tn` times and Yes `r tp` times for an overall accuracy of 77.54%. Our model has higher recall and precision. This means that our model is better at predicting if someone will stay at their current position as oppose to looking for a new one.
+The confusion matrix shows we correctly predicted No `r tn` times and Yes `r tp` times for an overall accuracy of 77.54%. Our model has higher recall and precision. For our purposes, this model isn't very useful. Out of the 873 data scientists who were looking to leave their job, the model only correctly identified 496 of them (\~57%) and also included nearly 700 false positives. In the real world, this model would most likely be unusable.
 
-### Random Forest    
+### Random Forest
 
-The decision tree algorithm is quite easy to understand and interpret. However, often a single tree is not sufficient for producing effective results. This is where the Random Forest algorithm comes into the picture.  
+The decision tree algorithm is quite easy to understand and interpret. However, often a single tree is not sufficient for producing effective results. This is where the Random Forest algorithm comes into the picture.
 
 We'll build a random forest model with 1500 trees where mtry and min_n are tunable parameters.
 
@@ -480,7 +489,7 @@ rf_workflow <- workflow() %>%
   add_model(rf_spec)
 ```
 
-The random forest is tuned through a grid of 30 possible values with parallel processing
+The random forest is tuned through a grid of 30 possible values with parallel processing.
 
 ```{r}
 set.seed(42)
@@ -488,38 +497,61 @@ doParallel::registerDoParallel()
 rf_tune <- tune_grid(rf_workflow, resamples = df_folds, grid=30)
 ```
 
-With the model tuned we can look at the sample space for the highest roc_auc
+With the model tuned we can look at the sample space for the highest roc_auc.
 
 ```{r}
+set.seed(42)
 show_best(rf_tune, metric='roc_auc')
 autoplot(rf_tune)
 ```
 
-Now with the best parameters we train the full model on the trainined set to obtain our finalized model.
+Now with the best parameters we train the full model on the trained set to obtain our finalized model.
 
 ```{r}
+set.seed(42)
 rf_model <- rf_workflow %>%
   finalize_workflow(select_best(rf_tune, metric='roc_auc'))
 rf_fit <- last_fit(rf_model, df_split)
 ```
 
-With the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set
+With the tuning completed we can now train the model with the best fit parameters on the train set and test on the test set.
 
 #### Testing
 
 The finalized model is evaluated on the test set to determine how it would perform on unseen data.
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(42)
 metrics <- collect_metrics(rf_fit)
-metrics
 roc_auc <- (metrics %>% filter(.metric == 'roc_auc'))$.estimate
 ```
 
-Our model has an roc_auc of `r roc_auc` on the test set which is a about the same on the training set. This implies the model has generalized on the training set after the down sampling.
-
-Feature importance
-
 ```{r}
+set.seed(42)
+model <- rf_fit$.workflow[[1]]
+y_pred <- predict(model, df_test)
+rf_df <- data.frame(y_pred=y_pred$.pred_class, y_true=df_test$target)
+rf_cm <- confusionMatrix(table(rf_df$y_true, rf_df$y_pred), positive='1')
+rf_cm
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+tn <- dt_cm$table[1]
+tp <- dt_cm$table[4]
+fn <- dt_cm$table[3]
+fp <- dt_cm$table[2]
+
+fourfoldplot(rf_cm$table)
+```
+
+The confusion matrix shows we correctly predicted an individual will stay at their current job 2,789 times and is looking for a new position 744 times. The sensitivity in this model is also not great at 47%, meaning out of the 1,551 individuals looking for new jobs, we were only correctly able to identify 744 of them. We'll have to hope that on of our other models will be able to perform better.
+
+**Feature importance**
+
+One of the benefits of the random forest model is the ability to see feature importance within the model. While our model is not as accurate as we'd like, it is still beneficial to see what features the model is placing the most importance on. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 imp_spec <- rf_spec %>%
   finalize_model(select_best(rf_tune, metric='roc_auc')) %>%
   set_engine('ranger', importance='permutation')
@@ -533,26 +565,9 @@ workflow() %>%
   labs(y='Importance', x='Features')
 ```
 
-The most important feature is city_development_index by a wide margin. Next is the city and relevant experience followed by university and base experience. The city_development_index would be a variable to take a closer look at in the future.
+The most important feature is `city_development_index` by a wide margin. Next is the `city` and `relevant_experience` followed by `enrolled_university` and `education_level`. The city_development_index would be a variable to take a closer look at in the future to see if some additional feature engineering could produce more signal. 
 
-```{r}
-model <- rf_fit$.workflow[[1]]
-y_pred <- predict(model, df_test)
-rf_df <- data.frame(y_pred=y_pred$.pred_class, y_true=df_test$target)
-rf_cm <- confusionMatrix(table(rf_df$y_true, rf_df$y_pred), positive='1')
-rf_cm
-
-tn <- dt_cm$table[1]
-tp <- dt_cm$table[4]
-fn <- dt_cm$table[3]
-fp <- dt_cm$table[2]
-
-fourfoldplot(rf_cm$table)
-```
-
-The confusion matrix shows we correctly predicted an individual will stay at their current job `r tp` times and is looking for a new position `r tn` times. Our model has higher recall (Neg Pred Valu) than precision (Pos Pred Value) which states it can catch false negatives better than false positives. A false negative is when the model predicts an individual will leave but they are actually going to stay, a false positive is when the model predicts an individual will stay but they are planning to leave.
-
----
+------------------------------------------------------------------------
 
 ### KNN
 
@@ -579,7 +594,7 @@ nzv[nzv[,"nzv"] == TRUE,]
 
 It turns out that none of our predictors have near-zero variance, so we're good to proceed!
 
-At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove Loan_ID since it will throw off our KNN model.
+At this point, we are ready to build our model. We'll start by splitting our data into training and testing sets. We also need to remove `enrollee_id` since it will throw off our KNN model.
 
 ```{r}
 knn_processed <- cbind(train[9], knn_transformed_feat)
@@ -591,7 +606,7 @@ knn_train <- knn_processed[train_ind,]
 knn_test <- knn_processed[-train_ind,]
 ```
 
-Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels). 
+Our KNN model uses the `kknn` library. With this library we are able to test different distances (Manhattan, Euclidean, etc.) as well as different weights (kernels).
 
 ```{r eval=FALSE}
 library(kknn)
@@ -647,7 +662,7 @@ kknn_results <- kknn_func(knn_train[,-1],
                           knn_test[,-1],
                           knn_test[,1])
 
-head(kknn_results[order(-kknn_results$Accuracy),], n = 10)
+
 acc_plot_data <- kknn_results[which(kknn_results$Distance == 5),]
 
 ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
@@ -658,35 +673,33 @@ ggplot(data = kknn_results, aes(x = k, y = Accuracy, color = Weight)) +
        y = "Accuracy")
 ```
 
-![]("https://github.com/christianthieme/Machine_Learning_Big_Data/blob/main/Final_Project/knn_accuracy.jpeg")
+![](knn_accuracy.jpeg){width="696"}
 
 From the visual above, we can see that our model found that a k value of around 27 with a distance of 2 and a weighting function of rectangular produced the best model with an accuracy of 77.2%.
 
+![](knn_results.jpg)
+
 This is a rather large value for k, which indicates that the groups are rather spread out and that KNN may not be the best method for predicting our target variable. Additionally, the sensitivity of this model is extremely low, once again indicating that this model is likely not ideal.
 
----
-
+------------------------------------------------------------------------
 
 ### Gradient Boosting
 
-
 Gradient boosting is similar to random forests or bagging approaches, but instead of just growing a large number of trees from independent random samples of the data, they are grown sequentially on transformations of the data. Boosting is a method to improve the weak learners sequentially and increase the model accuracy with a combined model.
-
 
 Unlike random forests, GBMs can have high variability in accuracy depending on their settings.
 
 Boosting has 4 tuning parameters that we can focus on:
 
-* The number of trees. 
+-   The number of trees.
 
-* The number of splits in each tree, which controls the complexity of the boosted ensemble (controlled with max.depth).
+-   The number of splits in each tree, which controls the complexity of the boosted ensemble (controlled with max.depth).
 
-* Interaction depth, the number of splits it has to perform on a tree.
+-   Interaction depth, the number of splits it has to perform on a tree.
 
-* The distribution type. We will use “adaboost”, as we are working with 0-1 outcomes.
+-   The distribution type. We will use "adaboost", as we are working with 0-1 outcomes.
 
-We will tune the model with the training set to find the best combination with the lowest RMSE error. 
-
+We will tune the model with the training set to find the best combination with the lowest RMSE error.
 
 ```{r, message=FALSE}
 # search grid
@@ -732,14 +745,13 @@ We experienced no improvement in our RMSE after we tried to increase the number 
 
 From the results above, we see the optimal hyperparameters are:
 
-* the number of trees to 100
+-   the number of trees to 100
 
-* interaction depth to 9
+-   interaction depth to 9
 
-* n.minobsinnode to 10
+-   n.minobsinnode to 10
 
-We will use these values to build the model for our test set. 
-
+We will use these values to build the model for our test set.
 
 ```{r, message=FALSE}
 set.seed(777)
@@ -748,7 +760,6 @@ set.seed(777)
 
 print(modelGBM)
 ```
-
 
 ```{r, message=FALSE}
 set.seed(777)
@@ -761,12 +772,11 @@ pgbm[pgbm<=0.5]=0
 confusionMatrix(as.factor(df_test$target),as.factor(pgbm), positive='1')
 ```
 
-
 Above, we can see the accuracy metrics for our final gradient boosting model. It appears that Boosting has a correct classification rate of 77.83% and a sensitivity of 58.34%.
 
-As a point of interest, we can use the `summary` function on our final model object to give us a variable importance plot. Not surprisingly, `city`and `experience` are the most important variables in the model.
+As a point of interest, we can use the `summary` function on our final model object to give us a variable importance plot. Not surprisingly, `city`and `experience` are the most important variables in the model. This aligns closely with what we saw as the important features in our random forest model. 
 
-```{r}
+```{r }
  summary(modelGBM,
         cBars = 10,
        n.trees = modelGBM$n.trees,
@@ -776,8 +786,6 @@ As a point of interest, we can use the `summary` function on our final model obj
          normalize = TRUE)
 
 ```
-
-
 
 ### Support Vector Machine
 
@@ -791,8 +799,7 @@ svm_model = svm(target ~ ., data=smp)
 summary(svm_model)
 ```
 
-
-Our base model consists of 4993 support vectors where 2511 are assigned to label 0 (not looking for a job change) and 2482 to label 1 (looking for a job change)
+Our base model consists of 4993 support vectors where 2511 are assigned to label 0 (not looking for a job change) and 2482 to label 1 (looking for a job change).
 
 We will tune the SVM with the training set to find the best values for gamma and cost. The tuning process is done with 10 fold cross validation.
 
@@ -830,34 +837,27 @@ y_test = predict(svm_best, x )
 confusionMatrix(df_test[,'target'], y_test, positive='1')
 ```
 
-Based on the results above, we can see that the model is most accurate at predicting someone who will not change job  with 2692 true negatives. The largest mistake is 433 false positives, meaning the model predicted that those individuals would change job when they didn't. There are also 904 false negatives which is a situation where the model predicts those individual will not change job when they did.
-
-```{r}
-set.seed(42)
-pred <- predict(svm_best, df_test, decision.values = TRUE, probability = TRUE)
-pred_prob <- attr(pred, 'probabilities')
-df_prob <- cbind(y, y_test, pred_prob)
-names(df_prob) = c('y_true' ,'y_pred', 'negative', 'positive')
-summary(df_prob)
-
-```
-
-The predicted probabilities are inline with our analysis of the training and testing set. From the predicted probabilities the SVM model is more likely to predict that an individual will not change job, true negatives. The sensitivity and specificity further add to this models strength. This SVM may do well in the real world.
-
+Based on the results above, we can see that the model is most accurate at predicting someone who will not change job with 2692 true negatives. There are also 433 false positives, meaning the model predicted that those individuals would change job when they didn't. Additionally, there are 904 false negatives which is a situation where the model predicts those individual will not change job when they did.
 
 ### Modeling Comparison
 
-Detailed results of the individual models are given above, however, a comparison of our models are provided below: 
+Detailed results of the individual models are given above, however, a comparison of our models are provided below:
 
-| Model          | Accuracy   | Specificity | Sensitivity |
-|----------------|------------|-------------|-------------|
-| Decision Tree  |     65.0%  |    70.5%    |   33.3%     | 
-| Random Forest  |     65.0%  |    70.5%    |   33.3%     | 
-| KNN            |     77.2%  |    91.7%    |   33.6%     | 
-| Gradient Boost |     77.8%  |    81.7%    |   58.3%     |        
-| SVM            |     72.0%  |    86.1%    |   45.7%     |  
+| Model          | Accuracy | Specificity | Sensitivity |
+|----------------|----------|-------------|-------------|
+| Decision Tree  | 77.5%    | 82.2%       | 56.8%       |
+| Random Forest  | 73.6%    | 86.1%       | 47.7%       |
+| KNN            | 77.2%    | 91.7%       | 33.6%       |
+| Gradient Boost | 77.8%    | 81.7%       | 58.3%       |
+| SVM            | 72.1%    | 86.1%       | 45.7%       |
 
+While the accuracy of these models may at first glance seem satisfactory, the purpose of these models was to predict whether a data scientist was looking to leave their job or not. This means we shouldn’t necessarily focus on accuracy as our measure for this model, instead we should focus on the sensitivity, which tells us how many of the data scientists that were looking to leave their job were correctly predicted by our model. In looking at our sensitivity above we can see that our results are lackluster. We would not recommend using any of these models in production to determine if a data scientist was planning on leaving their job. If our objective was to build a model that could predict who would stay at their job, these models would be potential prospects as all of them had fairly high specificity (82%+).
+
+So why did our modeling attempts fail? It's hard to say with certainty, but a large reason could be a lack of signal from our dataset. We saw when performing our exploratory data analysis that very few features within the dataset had any signal at all. It is quite possible that the few columns that did hold predictive power just didn't quite have enough signal for our models to detect. 
 
 
 ## Conclusion
 
+Based on our analysis and modeling, it appears that detecting which data scientists are planning to leave their jobs does not have a straightforward solution (at least with the present dataset). This should, intuitively, make some sense. If companies were good at detecting who was going to leave, they could do more to incentivize them to stay, which is not what we have seen in the past year and a half. This problem will continue to stump analysts for years to come. 
+
+As a next step in this project, we would recommend expanding the dataset to include additional data points that held more predictive power.  
